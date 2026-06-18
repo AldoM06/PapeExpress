@@ -7,7 +7,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-cambia-esto-en-produccion')
 DEBUG      = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*', cast=Csv())
-
+CSRF_TRUSTED_ORIGINS = [
+    "https://papeexpress.com",
+    "https://www.papeexpress.com",
+]
 INSTALLED_APPS = [
     'daphne',
     'django.contrib.admin',
@@ -58,9 +61,12 @@ TEMPLATES = [
 ASGI_APPLICATION = 'papeexpress.asgi.application'
 
 CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
-    }
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": ["redis://127.0.0.1:6379/0"],
+        },
+    },
 }
 
 DATABASES = {

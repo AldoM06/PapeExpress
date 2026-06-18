@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 TIPOS_HOJA = {
     'bond':       {'nombre': 'Bond / Carta',       'precio': 1.0},
     'fotografico':{'nombre': 'Fotográfico',         'precio': 20.0},
-    'etiqueta':   {'nombre': 'Etiqueta',            'precio': 8.0},
-    'opalina':    {'nombre': 'Opalina',             'precio': 5.0},
+    'etiqueta':   {'nombre': 'Etiqueta',            'precio': 6.0},
+    'opalina':    {'nombre': 'Opalina',             'precio': 2.5},
     'vinil':      {'nombre': 'Vinil',               'precio': 15.0},
     'couche':     {'nombre': 'Couché / Brillante',  'precio': 3.0},
 }
@@ -61,7 +61,7 @@ def procesar_pdf_tarea(
     channel_name: str,
     usuario_id,
     ip_cliente: str,
-    dpi: int = 150,
+    dpi: int = 80,
 ):
     """
     Procesamiento en hilo secundario.
