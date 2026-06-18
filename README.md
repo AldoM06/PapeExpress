@@ -20,7 +20,7 @@ source venv/bin/activate
 python manage.py runserver
 ```
 
-Abre tu navegador en **http://127.0.0.1:8000**
+Abre tu navegador en **http://127.0.0.1:9000**
 
 ---
 
