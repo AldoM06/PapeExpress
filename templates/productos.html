@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}Productos{% endblock %}
+
+{% block extra_css %}
+<style>
+.productos-hero { background:linear-gradient(135deg,#0a0e1a,#1a0a2e); padding:8rem 0 4rem; color:#fff; }
+.filter-bar { background:#fff; border-radius:16px; padding:1.2rem 1.5rem; box-shadow:0 4px 20px rgba(0,0,0,.08); margin-bottom:2rem; }
+.filter-btn { border-radius:50px; font-size:.85rem; font-weight:600; padding:.4rem 1.2rem; border:2px solid #e0e0e0; background:#fff; color:#555; transition:.2s; }
+.filter-btn.active, .filter-btn:hover { border-color:var(--pe-gold); background:var(--pe-gold); color:#fff; }
+.prod-grid-card { border:none; border-radius:20px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,.08); transition:.3s; }
+.prod-grid-card:hover { transform:translateY(-6px); box-shadow:0 12px 40px rgba(0,0,0,.15); }
+.prod-img { height:180px; object-fit:cover; }
+.no-prod-img { height:180px; display:flex;align-items:center;justify-content:center; font-size:2.5rem; background:linear-gradient(135deg,#f8f0d4,#fff3cd); color:#c8a84b; }
+.tab-tipo { display:flex; gap:1rem; margin-bottom:2rem; }
+.tab-tipo-btn { flex:1; padding:1rem; border-radius:16px; border:2px solid #e0e0e0; background:#fff; font-weight:600; cursor:pointer; text-align:center; transition:.2s; }
+.tab-tipo-btn.active { border-color:#c8a84b; background:linear-gradient(135deg,#fff9ed,#fffbf2); color:#c8a84b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="productos-hero">
+  <div class="container">
+    <span class="section-label">Catálogo completo</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:3rem;font-weight:900;color:#fff">Nuestros Productos</h1>
+    <p style="color:rgba(255,255,255,.7);font-size:1.1rem">Papelería de reventa y productos fabricados por nosotros.</p>
+  </div>
+</div>
+
+<section style="padding:3rem 0; background:#f8f9fa; min-height:60vh;">
+  <div class="container">
+    <!-- tabs tipo -->
+    <div class="tab-tipo">
+      <a href="?tipo=todos" class="tab-tipo-btn {% if tipo_filtro == 'todos' %}active{% endif %} text-decoration-none">
+        <i class="bi bi-grid-fill me-2"></i>Todos
+      </a>
+      <a href="?tipo=reventa" class="tab-tipo-btn {% if tipo_filtro == 'reventa' %}active{% endif %} text-decoration-none" style="color:{% if tipo_filtro == 'reventa' %}#c8a84b{% else %}#555{% endif %}">
+        <i class="bi bi-shop me-2"></i>Papelería General
+      </a>
+      <a href="?tipo=fabricado" class="tab-tipo-btn {% if tipo_filtro == 'fabricado' %}active{% endif %} text-decoration-none" style="color:{% if tipo_filtro == 'fabricado' %}#6c3fc5{% else %}#555{% endif %}">
+        <i class="bi bi-scissors me-2"></i>Fabricados por Nosotros
+      </a>
+    </div>
+
+    <!-- filtro categorías -->
+    <div class="filter-bar d-flex flex-wrap gap-2 align-items-center">
+      <span class="fw-600 text-muted small me-2"><i class="bi bi-funnel me-1"></i>Categoría:</span>
+      <a href="?tipo={{ tipo_filtro }}" class="filter-btn {% if not categoria_id %}active{% endif %} text-decoration-none">Todas</a>
+      {% if tipo_filtro != 'fabricado' %}
+        {% for cat in categorias_reventa %}
+        <a href="?tipo=reventa&cat={{ cat.id }}" class="filter-btn {% if categoria_id == cat.id|stringformat:'s' %}active{% endif %} text-decoration-none">{{ cat.nombre }}</a>
+        {% endfor %}
+      {% endif %}
+      {% if tipo_filtro != 'reventa' %}
+        {% for cat in categorias_fabricado %}
+        <a href="?tipo=fabricado&cat={{ cat.id }}" class="filter-btn {% if categoria_id == cat.id|stringformat:'s' %}active{% endif %} text-decoration-none">{{ cat.nombre }}</a>
+        {% endfor %}
+      {% endif %}
+    </div>
+
+    {% if productos %}
+    <div class="row g-4">
+      {% for p in productos %}
+      <div class="col-6 col-md-4 col-lg-3">
+        <div class="card prod-grid-card h-100">
+          {% if p.imagen %}
+            <img src="{{ p.imagen.url }}" class="prod-img w-100" alt="{{ p.nombre }}">
+          {% else %}
+            <div class="no-prod-img">
+              {% if p.categoria and p.categoria.tipo == 'fabricado' %}🎨{% else %}<i class="bi bi-box-seam"></i>{% endif %}
+            </div>
+          {% endif %}
+          <div class="card-body">
+            {% if p.categoria %}<small class="text-muted d-block mb-1">{{ p.categoria.nombre }}</small>{% endif %}
+            <h6 class="card-title fw-700 mb-1">{{ p.nombre }}</h6>
+            {% if p.descripcion %}<p class="card-text small text-muted">{{ p.descripcion|truncatechars:80 }}</p>{% endif %}
+            {% if p.precio %}
+            <div class="d-flex align-items-center gap-2 mt-2">
+              <span class="fw-700 text-pe fs-6">${{ p.precio }}</span>
+              {% if p.precio_mayoreo %}<small class="text-muted">Mayoreo: ${{ p.precio_mayoreo }}</small>{% endif %}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+      <div style="font-size:4rem">📦</div>
+      <h5 class="mt-3 text-muted">No hay productos en esta categoría</h5>
+      <a href="/productos/" class="btn btn-outline-dark rounded-pill mt-2">Ver todos</a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

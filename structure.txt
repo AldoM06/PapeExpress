@@ -1,0 +1,35 @@
+papeexpress/
+├── manage.py
+├── requirements.txt
+├── papeexpress/          # config project
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── core/                 # app principal
+│   ├── models.py         # Producto, Socio, Figura, Libreta
+│   ├── views.py
+│   ├── urls.py
+│   └── admin.py
+├── accounts/             # login/roles
+│   ├── models.py         # User extendido con roles
+│   ├── views.py
+│   └── urls.py
+├── produccion/           # pipeline de producción
+│   ├── models.py         # etapas
+│   ├── views.py
+│   └── urls.py
+├── socios/               # mapa de socios
+│   ├── models.py
+│   ├── views.py
+│   └── urls.py
+└── templates/
+    ├── base.html
+    ├── index.html
+    ├── productos.html
+    ├── produccion.html
+    ├── socios_mapa.html
+    ├── contacto.html
+    └── dashboard/
+        ├── admin.html
+        ├── socio.html
+        └── almacen.html

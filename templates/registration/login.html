@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Iniciar sesión{% endblock %}
+
+{% block content %}
+<div style="min-height:100vh;background:linear-gradient(135deg,#0a0e1a,#1a0a2e);display:flex;align-items:center;padding-top:80px;">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-5">
+        <div class="form-card text-center">
+          <img src="/static/img/logo.png" alt="PaPeExpress" style="height:70px;object-fit:contain;margin-bottom:.5rem">
+          <h3 class="fw-900 mb-1" style="font-family:'Playfair Display',serif;">Bienvenido</h3>
+          <p class="text-muted mb-4">Inicia sesión en tu cuenta PapeExpress</p>
+
+          {% if form.non_field_errors %}
+          <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+          {% endif %}
+
+          <form method="post">
+            {% csrf_token %}
+            <div class="mb-3 text-start">
+              <label class="form-label">{{ form.username.label }}</label>
+              {{ form.username }}
+            </div>
+            <div class="mb-4 text-start">
+              <label class="form-label">{{ form.password.label }}</label>
+              {{ form.password }}
+            </div>
+            <button type="submit" class="btn btn-pe-submit">
+              <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar sesión
+            </button>
+          </form>
+
+          <hr class="my-4">
+          <p class="text-muted small mb-2">¿No tienes cuenta?</p>
+          <a href="/accounts/registro/" class="btn btn-outline-secondary rounded-pill w-100">Crear cuenta</a>
+
+          <div class="mt-4 p-3 rounded-3" style="background:#f8f9fa;">
+            <small class="text-muted"><strong>Roles disponibles:</strong><br>
+            Cliente · Socio Comercial · Ventas · Almacén · Diseño · Producción · Admin</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

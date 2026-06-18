@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block title %}Nosotros{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,#0a0e1a,#1a0a2e);padding:8rem 0 5rem;color:#fff;overflow:hidden;position:relative;">
+  <div style="position:absolute;top:-100px;right:-100px;width:400px;height:400px;border-radius:50%;background:rgba(200,168,75,.08);filter:blur(60px)"></div>
+  <div class="container position-relative">
+    <span class="section-label">Quiénes somos</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:clamp(2.5rem,5vw,4rem);font-weight:900;max-width:700px;">Fabricantes con<br><span style="color:#c8a84b">pasión y propósito</span></h1>
+    <p style="color:rgba(255,255,255,.7);font-size:1.15rem;max-width:550px;margin-top:1rem;">Somos una empresa mexicana dedicada a fabricar y distribuir papelería de calidad  a todo el país.</p>
+  </div>
+</div>
+
+<!-- Historia -->
+<section style="padding:5rem 0;">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6">
+        <span class="section-label">Nuestra historia</span>
+        <h2 class="section-title">De taller a empresa distribuidora ALDO</h2>
+        <div class="text-muted lh-lg fs-6">
+          {% if config.historia %}
+            {{ config.historia|linebreaks }}
+          {% else %}
+            <p>PapeExpress comenzó como un pequeño taller familiar, con una misión clara: ofrecer papelería de calidad a precios accesibles para escuelas, papelerías y negocios locales.</p>
+            <p>Con el tiempo, desarrollamos nuestra propia línea de productos fabricados: figuras de fomy artesanales y libretas con diseños únicos, que rápidamente ganaron popularidad entre nuestros clientes.</p>
+            <p>Hoy contamos con una red de socios comerciales en múltiples estados y seguimos creciendo con el mismo compromiso de calidad y cercanía que nos dio origen.</p>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="row g-3">
+         
+          <div class="col-6">
+            <div class="p-4 rounded-4 text-center h-100" style="background:linear-gradient(135deg,#fff9ed,#fffbf2);border:1px solid #f0dfa0">
+              <div style="font-size:2.5rem">🏭</div>
+              <h6 class="fw-700 mt-2">Fabricación propia</h6>
+              <small class="text-muted">Diseñamos y producimos nuestras figuras de fomy y libretas</small>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-4 rounded-4 text-center h-100" style="background:linear-gradient(135deg,#f0ebff,#f9f5ff);border:1px solid #d5c0ff">
+              <div style="font-size:2.5rem">🚚</div>
+              <h6 class="fw-700 mt-2">Distribución</h6>
+              <small class="text-muted">Llevamos nuestros productos a toda la república mexicana</small>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-4 rounded-4 text-center h-100" style="background:linear-gradient(135deg,#eafff3,#f5fff9);border:1px solid #b0e8c8">
+              <div style="font-size:2.5rem">🤝</div>
+              <h6 class="fw-700 mt-2">Red de socios</h6>
+              <small class="text-muted">+200 puntos de venta aliados en toda la región</small>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="p-4 rounded-4 text-center h-100" style="background:linear-gradient(135deg,#fff0f0,#fff8f8);border:1px solid #ffc0c0">
+              <div style="font-size:2.5rem">⭐</div>
+              <h6 class="fw-700 mt-2">15+ años</h6>
+              <small class="text-muted">De experiencia y confianza en el mercado papelero</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Misión / Visión -->
+<section style="padding:4rem 0;background:#f8f9fa;">
+  <div class="container">
+    <div class="row g-4 justify-content-center">
+      <div class="col-md-5">
+        <div class="p-4 rounded-4 h-100" style="background:linear-gradient(135deg,#0a0e1a,#1a0a2e);color:#fff;">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div style="width:48px;height:48px;border-radius:14px;background:rgba(200,168,75,.2);display:flex;align-items:center;justify-content:center;font-size:1.5rem">🎯</div>
+            <h5 class="fw-700 mb-0">Misión</h5>
+          </div>
+          <p class="text-white-50 lh-lg mb-0">
+            {% if config.mision %}{{ config.mision }}{% else %}Fabricar y distribuir papelería accesible y de calidad, apoyando el aprendizaje y la creatividad de la comunidad mexicana.{% endif %}
+          </p>
+        </div>
+      </div>
+      <div class="col-md-5">
+        <div class="p-4 rounded-4 h-100" style="background:linear-gradient(135deg,#4a0080,#6c3fc5);color:#fff;">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div style="width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:1.5rem">🔭</div>
+            <h5 class="fw-700 mb-0">Visión</h5>
+          </div>
+          <p class="text-white-50 lh-lg mb-0">
+            {% if config.vision %}{{ config.vision }}{% else %}Ser la empresa de papelería mexicana más reconocida por la calidad de sus productos fabricados y la solidez de su red de distribución.{% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section style="padding:4rem 0;">
+  <div class="container text-center">
+    <h3 style="font-family:'Playfair Display',serif;font-weight:900;">¿Quieres unirte a nuestra red?</h3>
+    <p class="text-muted mb-4">Conviértete en socio comercial y vende nuestros productos en tu negocio.</p>
+    <a href="/contacto/" class="btn btn-pe btn-lg rounded-pill px-5">
+      <i class="bi bi-envelope me-2"></i>Contáctanos
+    </a>
+  </div>
+</section>
+{% endblock %}

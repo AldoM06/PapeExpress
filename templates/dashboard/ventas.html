@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %}Panel Ventas{% endblock %}
+{% block content %}
+<div style="min-height:80vh;background:#f8f9fa;padding:6rem 0 3rem;">
+  <div class="container">
+    <div class="form-card">
+      <h3 class="fw-700 mb-1">Panel de Ventas</h3>
+      <p class="text-muted mb-4">Gestión de pedidos y clientes</p>
+      <div class="row g-3">
+        <div class="col-md-4"><a href="/productos/" class="btn btn-outline-dark rounded-3 w-100 py-3"><i class="bi bi-cart d-block fs-3 mb-1"></i>Catálogo</a></div>
+        <div class="col-md-4"><a href="/admin/core/mensajecontacto/" class="btn btn-outline-dark rounded-3 w-100 py-3"><i class="bi bi-people d-block fs-3 mb-1"></i>Contactos</a></div>
+        <div class="col-md-4"><a href="/socios/mapa/" class="btn btn-outline-dark rounded-3 w-100 py-3"><i class="bi bi-map d-block fs-3 mb-1"></i>Red socios</a></div>
+      </div>
+      <a href="/accounts/logout/" class="btn btn-outline-danger rounded-pill mt-4">Cerrar sesión</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

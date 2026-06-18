@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% block title %}Comparar precios proveedores{% endblock %}
+
+{% block extra_css %}
+<style>
+.prov-card {
+  background:#fff; border-radius:18px; padding:1.2rem 1.5rem;
+  border:1.5px solid #f0f0f0; transition:.2s;
+}
+.prov-card.mejor { border-color:#00A846; background:#f0fff4; }
+.prov-card.peor  { border-color:#FF1744; background:#fff5f5; }
+.hist-row { display:flex; justify-content:space-between; font-size:.78rem;
+  padding:.3rem 0; border-bottom:1px solid #f5f5f5; }
+.hist-row:last-child { border:none; }
+.precio-bar-wrap { margin-top:.5rem; }
+.precio-bar { height:8px; border-radius:50px; background:#e9ecef; overflow:hidden; }
+.precio-bar-fill { height:100%; border-radius:50px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,#0d0d1e,#001230);padding:7rem 0 3rem;color:#fff;">
+  <div class="container">
+    <span class="section-label">POS</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;">
+      Comparativa de precios
+    </h1>
+    <p style="color:rgba(255,255,255,.6)">Compara el historial de precios entre tus proveedores</p>
+  </div>
+</div>
+
+<section style="padding:2rem 0;background:#f4f6f9;min-height:60vh;">
+  <div class="container">
+
+    <!-- Selector producto -->
+    <div class="card border-0 rounded-4 p-4 mb-4">
+      <form method="get" class="d-flex gap-3 align-items-end flex-wrap">
+        <div class="flex-grow-1" style="max-width:400px">
+          <label class="form-label fw-700">Selecciona un producto</label>
+          <select name="producto" class="form-select" onchange="this.form.submit()">
+            <option value="">— Elige un producto —</option>
+            {% for p in productos %}
+            <option value="{{ p.id }}" {% if producto and producto.id == p.id %}selected{% endif %}>
+              [{{ p.codigo }}] {{ p.nombre }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <a href="/pos/precios/comparar/" class="btn btn-outline-secondary rounded-pill">Limpiar</a>
+      </form>
+    </div>
+
+    {% if producto %}
+    <h5 class="fw-700 mb-3">
+      📦 {{ producto.nombre }}
+      <small class="text-muted fw-400">— {{ comparativa|length }} proveedor{{ comparativa|length|pluralize }}</small>
+    </h5>
+
+    {% if comparativa %}
+    {% with max_precio=comparativa.0.ultimo_precio %}
+
+    <div class="row g-3 mb-4">
+      {% for prov in comparativa %}
+      {% with es_mejor=forloop.first %}
+      <div class="col-md-4">
+        <div class="prov-card {% if forloop.first %}mejor{% elif forloop.last %}peor{% endif %}">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+              <div class="fw-800">{{ prov.proveedor }}</div>
+              <small class="text-muted">Último precio: {{ prov.ultima_fecha|date:"d/m/Y" }}</small>
+            </div>
+            {% if forloop.first %}
+            <span class="badge bg-success rounded-pill">🏆 Más barato</span>
+            {% elif forloop.last and comparativa|length > 1 %}
+            <span class="badge bg-danger rounded-pill">💸 Más caro</span>
+            {% endif %}
+          </div>
+
+          <div class="fw-900 mb-2" style="font-size:1.5rem;
+            color:{% if forloop.first %}#00A846{% elif forloop.last %}#FF1744{% else %}#FF8C00{% endif %}">
+            ${{ prov.ultimo_precio|floatformat:2 }}
+          </div>
+
+          <!-- Historial -->
+          <div class="mb-2">
+            <small class="text-muted fw-700">Historial de compras:</small>
+            <div style="max-height:120px;overflow-y:auto;margin-top:.3rem">
+              {% for h in prov.historial %}
+              <div class="hist-row">
+                <span class="text-muted">{{ h.fecha }}</span>
+                <span class="fw-700">${{ h.precio }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Barra comparativa -->
+          <div class="precio-bar-wrap">
+            <div class="precio-bar">
+              <div class="precio-bar-fill"
+                   style="width:100%;
+                   background:{% if forloop.first %}#00A846{% elif forloop.last %}#FF1744{% else %}#FF8C00{% endif %}">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endwith %}
+      {% endfor %}
+    </div>
+
+    {% if comparativa|length > 1 %}
+    <div class="card border-0 rounded-4 p-4" style="background:linear-gradient(135deg,#0d0d1e,#001230);color:#fff">
+      <h6 class="fw-700 mb-2 text-white">💡 Recomendación</h6>
+      <p style="color:rgba(255,255,255,.7);font-size:.88rem;margin:0">
+        El proveedor más económico para <strong>{{ producto.nombre }}</strong> es
+        <strong style="color:#FFD600">{{ comparativa.0.proveedor }}</strong>
+        con un precio de <strong style="color:#00E676">${{ comparativa.0.ultimo_precio|floatformat:2 }}</strong>.
+        {% if comparativa|length > 1 %}
+        Esto representa un ahorro vs el más caro de
+        <strong style="color:#FF8C00">
+          ${% widthratio comparativa.0.ultimo_precio 1 1 %}
+        </strong>.
+        {% endif %}
+      </p>
+    </div>
+    {% endif %}
+
+    {% endwith %}
+    {% else %}
+    <div class="text-center py-5">
+      <div style="font-size:3.5rem">📊</div>
+      <h5 class="mt-3 text-muted">Sin historial de precios</h5>
+      <p class="text-muted small">Registra compras con este producto para ver la comparativa.</p>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="text-center py-5">
+      <div style="font-size:4rem">📈</div>
+      <h5 class="mt-3 text-muted">Selecciona un producto para comparar</h5>
+      <p class="text-muted small">Verás el historial de precios de cada proveedor lado a lado.</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

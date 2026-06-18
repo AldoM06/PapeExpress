@@ -1,0 +1,274 @@
+{% extends 'base.html' %}
+{% block title %}Portal Socios — {{ socio.nombre }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.figura-card {
+  background:#fff; border-radius:20px; overflow:hidden;
+  border:2px solid #f0f0f0; transition:.25s; cursor:pointer;
+}
+.figura-card:hover { border-color:#FF0080; transform:translateY(-4px); box-shadow:0 10px 32px rgba(255,0,128,.15); }
+.figura-card.sin-stock { opacity:.55; cursor:not-allowed; }
+.figura-card.sin-stock:hover { transform:none; box-shadow:none; border-color:#f0f0f0; }
+
+.stock-badge {
+  display:inline-flex; align-items:center; gap:.3rem;
+  font-size:.72rem; font-weight:800; padding:.2rem .7rem; border-radius:50px;
+}
+.pedido-row { padding:.65rem .75rem; border-radius:12px; border:1.5px solid #f0f0f0; margin-bottom:.5rem; }
+.estado-chip { font-size:.65rem; font-weight:900; padding:2px 9px; border-radius:50px; }
+
+.qty-input { width:70px; text-align:center; font-weight:800; }
+
+.stripe-badge {
+  display:inline-flex; align-items:center; gap:.4rem;
+  background:#635BFF; color:#fff; border-radius:8px;
+  padding:.3rem .8rem; font-size:.72rem; font-weight:700;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,#0d0d1e,#1a001e);padding:7rem 0 3rem;color:#fff;">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 flex-wrap mb-2">
+      <span class="section-label mb-0">Portal Socios</span>
+      <div class="stripe-badge"><span>💳</span>Pagos con Stripe</div>
+    </div>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.6rem;font-weight:900;">
+      Hola, <span style="color:#FFD600">{{ socio.nombre }}</span> 👋
+    </h1>
+    <p style="color:rgba(255,255,255,.6)">
+      Selecciona las figuras de fomy que deseas pedir. El inventario se actualiza en tiempo real.
+    </p>
+  </div>
+</div>
+
+<section style="padding:2.5rem 0;background:#f4f6f9;min-height:60vh;">
+  <div class="container">
+    <div class="row g-4">
+
+      <!-- CATÁLOGO DE FIGURAS -->
+      <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="fw-700 mb-0">Figuras disponibles</h5>
+          <span class="badge rounded-pill bg-dark">{{ figuras.count }} figuras</span>
+        </div>
+
+        {% if figuras %}
+        <div class="row g-3" id="catalogoFiguras">
+          {% for f in figuras %}
+          <div class="col-sm-6 col-md-4">
+            <div class="figura-card {% if f.cantidad_disponible == 0 %}sin-stock{% endif %}">
+
+              <!-- Imagen -->
+              {% if f.fotos.first %}
+              <img src="{{ f.fotos.first.foto.url }}" style="width:100%;height:140px;object-fit:cover">
+              {% elif f.imagen_referencia %}
+              <img src="{{ f.imagen_referencia.url }}" style="width:100%;height:140px;object-fit:cover">
+              {% else %}
+              <div style="height:140px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#FCE4EC,#F8BBD0);font-size:3rem">🎨</div>
+              {% endif %}
+
+              <div class="p-3">
+                <div class="fw-800 mb-1">{{ f.nombre }}</div>
+                {% if f.descripcion %}
+                <p class="text-muted small mb-2" style="font-size:.75rem">{{ f.descripcion|truncatechars:60 }}</p>
+                {% endif %}
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="fw-900" style="color:#FF0080;font-size:1.05rem">
+                    {% if f.precio_venta %}${{ f.precio_venta }}{% else %}Consultar{% endif %}
+                  </span>
+                  <span class="stock-badge {% if f.cantidad_disponible > 0 %}bg-success text-white{% else %}bg-warning text-dark{% endif %}">
+                    {% if f.cantidad_disponible > 0 %}
+                    ✓ {{ f.cantidad_disponible }} disp.
+                    {% else %}
+                    Sin stock
+                    {% endif %}
+                  </span>
+                </div>
+
+                {% if f.cantidad_disponible > 0 and f.precio_venta %}
+                <button class="btn w-100 rounded-pill fw-700 btn-sm"
+                        style="background:linear-gradient(135deg,#FF0080,#FF1744);color:#fff"
+                        onclick="abrirPedido({{ f.id }}, '{{ f.nombre|escapejs }}', {{ f.precio_venta }}, {{ f.cantidad_disponible }})">
+                  <i class="bi bi-cart-plus me-1"></i>Pedir
+                </button>
+                {% else %}
+                <button class="btn w-100 rounded-pill btn-sm btn-secondary" disabled>
+                  {% if not f.precio_venta %}Sin precio{% else %}Sin stock{% endif %}
+                </button>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+          <div style="font-size:4rem">🎨</div>
+          <h5 class="mt-3 text-muted">No hay figuras disponibles en este momento</h5>
+          <p class="text-muted small">Cuando haya figuras listas para venta aparecerán aquí.</p>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- MIS PEDIDOS -->
+      <div class="col-lg-4">
+        <div class="card border-0 rounded-4 p-4">
+          <h6 class="fw-700 mb-3">
+            <i class="bi bi-receipt me-2" style="color:#FF0080"></i>
+            Mis pedidos recientes
+          </h6>
+
+          {% for p in mis_pedidos %}
+          <div class="pedido-row">
+            <div class="d-flex justify-content-between align-items-start mb-1">
+              <div class="fw-700 small">{{ p.figura.nombre }}</div>
+              <span class="estado-chip
+                {% if p.estado == 'pagado' or p.estado == 'entregado' %}bg-success text-white
+                {% elif p.estado == 'cancelado' %}bg-danger text-white
+                {% elif p.estado == 'enviado' or p.estado == 'preparando' %}bg-info text-dark
+                {% else %}bg-warning text-dark{% endif %}">
+                {{ p.get_estado_display }}
+              </span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <small class="text-muted">{{ p.cantidad }} pzas · {{ p.creado|date:"d/m/Y" }}</small>
+              <small class="fw-800" style="color:#FF0080">${{ p.total }}</small>
+            </div>
+          </div>
+          {% empty %}
+          <div class="text-center py-3 text-muted">
+            <i class="bi bi-receipt" style="font-size:2rem"></i>
+            <p class="small mt-2 mb-0">Aún no tienes pedidos.</p>
+          </div>
+          {% endfor %}
+
+          {% if mis_pedidos %}
+          <div class="mt-3 p-3 rounded-3" style="background:#f8f9fa">
+            <small class="text-muted">
+              <i class="bi bi-info-circle me-1"></i>
+              Los pagos se procesan mediante <strong>Stripe</strong>.
+              Recibirás confirmación por correo al completar el pago.
+            </small>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Info Stripe -->
+        {% if stripe_pk %}
+        <div class="card border-0 rounded-4 p-4 mt-3" style="background:linear-gradient(135deg,#4c4ae8,#635BFF);color:#fff">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span style="font-size:1.4rem">💳</span>
+            <span class="fw-800">Pagos seguros</span>
+          </div>
+          <p style="font-size:.78rem;color:rgba(255,255,255,.75);margin:0">
+            Procesamos tus pagos con <strong>Stripe</strong>, la plataforma de pagos más segura del mundo. Tarjeta de crédito o débito.
+          </p>
+        </div>
+        {% else %}
+        <div class="card border-0 rounded-4 p-4 mt-3" style="background:#fff9f0;border:1.5px solid #FFD60030!important">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span>💬</span>
+            <span class="fw-700 small">Pago manual</span>
+          </div>
+          <p class="text-muted small mb-0">Coordina el pago directamente con PaPeExpress después de registrar tu pedido.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MODAL PEDIDO -->
+<div class="modal fade" id="modalPedido" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 rounded-4 overflow-hidden">
+      <div style="background:linear-gradient(135deg,#FF0080,#FF1744);padding:1.5rem;color:#fff">
+        <h5 class="fw-800 mb-0">🛒 Confirmar pedido</h5>
+      </div>
+      <div class="modal-body p-4">
+        <div class="mb-3 p-3 rounded-3" style="background:#f8f9fa">
+          <div class="fw-800 mb-1" id="modal-nombre-figura">—</div>
+          <div class="text-muted small">Precio unitario: <span id="modal-precio" class="fw-700 text-danger"></span></div>
+        </div>
+
+        <form method="post" action="/socios/pedido/crear/" id="formPedido">
+          {% csrf_token %}
+          <input type="hidden" name="figura_id" id="modal-figura-id">
+
+          <div class="mb-3">
+            <label class="form-label fw-700">Cantidad de piezas</label>
+            <div class="d-flex align-items-center gap-3">
+              <button type="button" class="btn btn-outline-secondary rounded-circle"
+                      style="width:36px;height:36px;padding:0" onclick="cambiarQty(-1)">−</button>
+              <input type="number" name="cantidad" id="modal-qty" class="form-control qty-input"
+                     value="1" min="1" onchange="actualizarTotal()">
+              <button type="button" class="btn btn-outline-secondary rounded-circle"
+                      style="width:36px;height:36px;padding:0" onclick="cambiarQty(1)">+</button>
+            </div>
+            <small class="text-muted" id="modal-stock-info"></small>
+          </div>
+
+          <div class="p-3 rounded-3 mb-3" style="background:#fff0f6;border:1.5px solid rgba(255,0,128,.15)">
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Total del pedido</span>
+              <span class="fw-900" style="color:#FF0080;font-size:1.15rem" id="modal-total">$0.00</span>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-600">Notas (opcional)</label>
+            <textarea name="notas" class="form-control" rows="2" placeholder="Colores específicos, fecha de entrega, etc."></textarea>
+          </div>
+
+          <button type="submit" class="btn w-100 fw-800 rounded-pill py-3"
+                  style="background:linear-gradient(135deg,#FF0080,#FF1744);color:#fff;font-size:1rem">
+            {% if stripe_pk %}
+            <i class="bi bi-credit-card me-2"></i>Pagar con Stripe →
+            {% else %}
+            <i class="bi bi-check-circle me-2"></i>Confirmar pedido
+            {% endif %}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let precioActual = 0;
+let stockMax = 0;
+
+function abrirPedido(id, nombre, precio, stock) {
+  precioActual = precio;
+  stockMax = stock;
+  document.getElementById('modal-figura-id').value = id;
+  document.getElementById('modal-nombre-figura').textContent = nombre;
+  document.getElementById('modal-precio').textContent = '$' + precio.toFixed(2);
+  document.getElementById('modal-qty').value = 1;
+  document.getElementById('modal-qty').max = stock;
+  document.getElementById('modal-stock-info').textContent = `Máximo disponible: ${stock} piezas`;
+  actualizarTotal();
+  new bootstrap.Modal(document.getElementById('modalPedido')).show();
+}
+
+function cambiarQty(delta) {
+  const input = document.getElementById('modal-qty');
+  let val = parseInt(input.value) + delta;
+  val = Math.max(1, Math.min(val, stockMax));
+  input.value = val;
+  actualizarTotal();
+}
+
+function actualizarTotal() {
+  const qty = parseInt(document.getElementById('modal-qty').value) || 1;
+  const total = qty * precioActual;
+  document.getElementById('modal-total').textContent = '$' + total.toFixed(2);
+}
+</script>
+{% endblock %}

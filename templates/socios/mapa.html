@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}Red de Socios{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+#mapasocios { height: 520px; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,.12); }
+.socio-popup h6 { font-weight: 700; margin-bottom: 4px; }
+.socio-popup small { color: #6c757d; }
+.leaflet-popup-content-wrapper { border-radius: 14px !important; box-shadow: 0 4px 20px rgba(0,0,0,.15) !important; }
+.socio-list-item {
+  background: #fff; border-radius: 14px; padding: 1rem 1.2rem;
+  border: 1px solid #f0f0f0; transition: .2s; cursor: pointer;
+}
+.socio-list-item:hover { border-color: #c8a84b; box-shadow: 0 4px 16px rgba(200,168,75,.15); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,#0a0e1a,#1a0a2e);padding:8rem 0 4rem;color:#fff;">
+  <div class="container">
+    <span class="section-label">Distribución</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:3rem;font-weight:900;">Red de Socios Comerciales</h1>
+    <p style="color:rgba(255,255,255,.7)">Encuentra dónde comprar nuestros productos cerca de ti.</p>
+  </div>
+</div>
+
+<section style="padding:3rem 0; background:#f8f9fa;">
+  <div class="container">
+    <div class="row g-4">
+      <!-- Mapa -->
+      <div class="col-lg-8">
+        <div id="mapasocios"></div>
+        <small class="text-muted mt-2 d-block">
+          <i class="bi bi-info-circle me-1"></i>
+          Haz clic en un marcador para ver la información del socio.
+        </small>
+      </div>
+
+      <!-- Lista socios -->
+      <div class="col-lg-4">
+        <div class="card border-0 rounded-4 p-3" style="max-height:560px;overflow-y:auto;">
+          <h6 class="fw-700 mb-3 px-1">
+            <i class="bi bi-people-fill me-2" style="color:#c8a84b"></i>
+            Socios activos
+            <span class="badge rounded-pill ms-1" style="background:#c8a84b;color:#0a0e1a">{{ socios|length }}</span>
+          </h6>
+          <div class="d-flex flex-column gap-2" id="sociosList">
+            {% for s in socios %}
+            <div class="socio-list-item" onclick="focusSocio({{ s.id }}, {{ s.latitud|default:'null' }}, {{ s.longitud|default:'null' }})">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fw-600 small">{{ s.nombre }}</div>
+                  {% if s.tipo_negocio %}<small class="text-muted d-block">{{ s.tipo_negocio }}</small>{% endif %}
+                  {% if s.ciudad %}<small class="text-muted"><i class="bi bi-geo-alt me-1"></i>{{ s.ciudad }}{% if s.estado %}, {{ s.estado }}{% endif %}</small>{% endif %}
+                </div>
+                {% if s.telefono %}
+                <a href="tel:{{ s.telefono }}" class="btn btn-sm rounded-circle" style="background:#f0f0f0;color:#555;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0" onclick="event.stopPropagation()">
+                  <i class="bi bi-telephone-fill" style="font-size:.7rem"></i>
+                </a>
+                {% endif %}
+              </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-4 text-muted">
+              <i class="bi bi-map" style="font-size:2rem"></i>
+              <p class="mt-2 small">No hay socios registrados aún.</p>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        {% if user.is_authenticated and user.rol == 'admin' or user.is_superuser %}
+        <a href="/admin/socios/sociocomercial/add/" class="btn btn-pe rounded-pill w-100 mt-3">
+          <i class="bi bi-plus-circle me-2"></i>Agregar socio
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const sociosData = {{ socios_json|safe }};
+
+// Inicializar mapa centrado en México
+const mapa = L.map('mapasocios').setView([19.4326, -99.1332], 6);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  maxZoom: 18
+}).addTo(mapa);
+
+// Ícono personalizado
+const icono = L.divIcon({
+  html: `<div style="
+    width:36px;height:36px;border-radius:50% 50% 50% 0;
+    background:linear-gradient(135deg,#c8a84b,#e8c96b);
+    border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.3);
+    display:flex;align-items:center;justify-content:center;
+    transform:rotate(-45deg);
+  "><i class="bi bi-shop" style="transform:rotate(45deg);color:#0a0e1a;font-size:.9rem"></i></div>`,
+  className: '',
+  iconSize: [36, 36],
+  iconAnchor: [18, 36],
+  popupAnchor: [0, -36],
+});
+
+const marcadores = {};
+
+sociosData.forEach(s => {
+  if (!s.lat || !s.lng) return;
+  const marker = L.marker([s.lat, s.lng], { icon: icono }).addTo(mapa);
+  marker.bindPopup(`
+    <div class="socio-popup" style="min-width:180px">
+      <h6>${s.nombre}</h6>
+      ${s.tipo_negocio ? `<small class="text-muted d-block mb-1">${s.tipo_negocio}</small>` : ''}
+      ${s.direccion ? `<small><i class="bi bi-geo-alt me-1"></i>${s.direccion}</small><br>` : ''}
+      ${s.ciudad ? `<small>${s.ciudad}${s.estado ? ', ' + s.estado : ''}</small><br>` : ''}
+      ${s.telefono ? `<a href="tel:${s.telefono}" class="btn btn-sm btn-outline-secondary rounded-pill mt-2" style="font-size:.75rem"><i class="bi bi-telephone me-1"></i>${s.telefono}</a>` : ''}
+    </div>
+  `);
+  marcadores[s.id] = marker;
+});
+
+function focusSocio(id, lat, lng) {
+  if (!lat || !lng) return;
+  mapa.flyTo([lat, lng], 14, { duration: 1.2 });
+  if (marcadores[id]) marcadores[id].openPopup();
+}
+
+// Si no hay socios con coordenadas, mostrar mensaje
+if (sociosData.length === 0) {
+  document.getElementById('mapasocios').innerHTML = `
+    <div style="height:100%;display:flex;align-items:center;justify-content:center;background:#f8f9fa;border-radius:20px;flex-direction:column;gap:1rem;">
+      <i class="bi bi-map" style="font-size:3rem;color:#adb5bd"></i>
+      <p class="text-muted">Aún no hay socios con ubicación registrada.</p>
+    </div>`;
+}
+</script>
+{% endblock %}

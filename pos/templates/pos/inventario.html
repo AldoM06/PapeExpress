@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block title %}Inventario — {{ sucursal.nombre|default:"Todas las sucursales" }}{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,#0d0d1e,#1a001e);padding:7rem 0 3rem;color:#fff;">
+  <div class="container-fluid px-4">
+    <span class="section-label">POS</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;">
+      Inventario {% if sucursal %}— {{ sucursal.nombre }}{% endif %}
+    </h1>
+  </div>
+</div>
+
+<section style="padding:2rem 0;background:#f4f6f9;min-height:60vh;">
+  <div class="container-fluid px-4">
+
+    <!-- Filtros -->
+    <div class="card border-0 rounded-4 p-3 mb-3">
+      <form method="get" class="d-flex gap-2 flex-wrap align-items-center">
+        <input name="q" value="{{ q }}" class="form-control rounded-pill" style="max-width:260px"
+               placeholder="🔍 Buscar producto…">
+        {% if sucursales %}
+        <select name="sucursal" class="form-select rounded-pill" style="max-width:200px">
+          <option value="">Todas las sucursales</option>
+          {% for s in sucursales %}
+          <option value="{{ s.id }}" {% if sucursal and sucursal.id == s.id %}selected{% endif %}>{{ s.nombre }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+        <div class="form-check ms-2">
+          <input class="form-check-input" type="checkbox" name="criticos" id="chkCriticos"
+                 value="1" {% if solo_criticos %}checked{% endif %}>
+          <label class="form-check-label fw-700 text-danger small" for="chkCriticos">
+            Solo críticos
+          </label>
+        </div>
+        <button type="submit" class="btn rounded-pill fw-700 btn-sm"
+                style="background:linear-gradient(135deg,#FF0080,#FF1744);color:#fff">
+          Filtrar
+        </button>
+        <a href="/pos/inventario/" class="btn btn-outline-secondary rounded-pill btn-sm">Limpiar</a>
+      </form>
+    </div>
+
+    <div class="card border-0 rounded-4 overflow-hidden">
+      <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+        <h6 class="fw-700 mb-0">
+          {% if inventarios|length is not None %}{{ inventarios|length }}{% endif %} productos
+        </h6>
+        <a href="/pos/admin-pos/barrido/" class="btn btn-sm rounded-pill fw-700"
+           style="background:#FF1744;color:#fff">
+          📡 Barrido Telegram
+        </a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:.85rem">
+          <thead style="background:#0d0d1e;color:#fff">
+            <tr>
+              <th>Producto</th>
+              <th>Categoría</th>
+              {% if sucursales %}<th>Sucursal</th>{% endif %}
+              <th class="text-center">Stock actual</th>
+              <th class="text-center">Mínimo</th>
+              <th class="text-center">Máximo</th>
+              <th>Costo prom.</th>
+              <th>Estado</th>
+              <th>Barra</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for inv in inventarios %}
+            <tr {% if inv.bajo_minimo %}style="background:#fff5f5"{% endif %}>
+              <td>
+                <div class="fw-700">{{ inv.producto.nombre }}</div>
+                <small class="text-muted">{{ inv.producto.codigo }}</small>
+              </td>
+              <td>
+                <small>{{ inv.producto.categoria.icono|default:"📦" }} {{ inv.producto.categoria.nombre|default:"—" }}</small>
+              </td>
+              {% if sucursales %}<td><small>{{ inv.sucursal.nombre }}</small></td>{% endif %}
+              <td class="text-center fw-800 {% if inv.bajo_minimo %}text-danger{% endif %}">
+                {{ inv.stock_actual }} <small class="text-muted">{{ inv.producto.unidad }}</small>
+              </td>
+              <td class="text-center text-muted">{{ inv.stock_minimo }}</td>
+              <td class="text-center text-muted">{{ inv.stock_maximo|default:"—" }}</td>
+              <td>${{ inv.costo_promedio|floatformat:2 }}</td>
+              <td>
+                {% if inv.bajo_minimo %}
+                <span class="badge rounded-pill" style="background:#FF1744">⚠️ CRÍTICO</span>
+                {% else %}
+                <span class="badge rounded-pill bg-success">✅ OK</span>
+                {% endif %}
+              </td>
+              <td style="min-width:100px">
+                {% if inv.porcentaje_stock is not None %}
+                <div style="height:7px;border-radius:50px;background:#e9ecef;overflow:hidden">
+                  <div style="width:{{ inv.porcentaje_stock }}%;height:100%;border-radius:50px;
+                    background:{% if inv.porcentaje_stock < 20 %}#FF1744{% elif inv.porcentaje_stock < 40 %}#FF8C00{% else %}#00A846{% endif %}">
+                  </div>
+                </div>
+                <small class="text-muted">{{ inv.porcentaje_stock }}%</small>
+                {% else %}—{% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9" class="text-center py-5 text-muted">
+              <div style="font-size:3rem">📦</div>
+              <p class="mt-2">Sin productos en inventario.</p>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,724 @@
+{% extends 'base.html' %}
+{% block title %}Calculadora de Impresiones{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ══ Calculadora ══════════════════════════════════════════ */
+.calc-hero {
+  background: linear-gradient(140deg,#0d0d1e 0%,#12192e 55%,#0d1e12 100%);
+  padding: 8rem 0 4rem; color: #fff; position: relative; overflow: hidden;
+}
+.calc-hero::before {
+  content:''; position:absolute; top:-80px; right:-80px;
+  width:360px;height:360px;border-radius:50%;
+  background:radial-gradient(circle,rgba(245,194,0,.18),transparent 70%);
+}
+
+/* Upload zone */
+.upload-zone {
+  border: 2.5px dashed #dee2e6; border-radius: 20px;
+  padding: 2.5rem; text-align: center; cursor: pointer;
+  transition: all .25s; background: #fafbfc;
+  position: relative;
+}
+.upload-zone:hover, .upload-zone.dragover {
+  border-color: var(--pe-yellow); background: #fffdf0;
+  box-shadow: 0 0 0 4px rgba(245,194,0,.1);
+}
+.upload-zone input[type=file] {
+  position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;
+}
+.upload-icon { font-size: 3rem; color: var(--pe-yellow); margin-bottom: .75rem; }
+.upload-filename {
+  display:none; align-items:center; gap:.5rem; justify-content:center;
+  background:rgba(245,194,0,.1); border-radius:50px; padding:.4rem 1rem;
+  font-weight:600; color:#333; font-size:.9rem;
+}
+
+/* Límite badge */
+.limite-badge {
+  display:inline-flex; align-items:center; gap:.4rem;
+  background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15);
+  border-radius:50px; padding:.3rem 1rem; font-size:.8rem; color:rgba(255,255,255,.75);
+}
+.limite-badge .limite-val { color: var(--pe-yellow); font-weight:700; }
+
+/* Progress section */
+.progress-section { display:none; }
+.progress-section.visible { display:block; }
+.progress-wrap {
+  background: #fff; border-radius: 20px; padding: 2rem;
+  box-shadow: 0 4px 24px rgba(0,0,0,.08);
+}
+.progress-bar-pe {
+  height: 14px; border-radius: 50px; overflow: hidden;
+  background: #e9ecef; margin: 1rem 0;
+}
+.progress-bar-pe-fill {
+  height: 100%; border-radius: 50px;
+  background: linear-gradient(90deg, var(--pe-yellow), var(--pe-red));
+  transition: width .4s ease;
+  width: 0%;
+}
+.progress-step {
+  display:flex; align-items:center; gap:.6rem;
+  font-size:.85rem; color:#6c757d; margin-bottom:.3rem;
+}
+.progress-step.done   { color: #28a745; }
+.progress-step.active { color: var(--pe-red); font-weight:600; }
+.step-dot {
+  width:10px;height:10px;border-radius:50%;background:#dee2e6; flex-shrink:0;
+}
+.progress-step.done   .step-dot { background:#28a745; }
+.progress-step.active .step-dot {
+  background:var(--pe-red);
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+@keyframes pulse-dot { 0%,100%{transform:scale(1)} 50%{transform:scale(1.5)} }
+
+/* Resultados */
+.resultado-section { display:none; }
+.resultado-section.visible { display:block; }
+.result-stat-card {
+  border-radius:16px; padding:1.25rem 1.5rem; text-align:center;
+  border:none; height:100%;
+}
+.result-stat-num { font-family:'Playfair Display',serif; font-size:2rem; font-weight:900; line-height:1; }
+
+/* Tabla resultados */
+.tabla-paginas { max-height:320px; overflow-y:auto; }
+.tabla-paginas thead th { position:sticky; top:0; background:#1a1a2e; color:#fff; z-index:1; }
+.barra-color { height:8px; border-radius:50px; background:linear-gradient(90deg,#e8f4fd,var(--pe-red)); min-width:4px; }
+
+/* Tipo hoja selector */
+.tipo-hoja-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.6rem; }
+.tipo-hoja-btn {
+  border:2px solid #dee2e6; border-radius:12px; padding:.7rem .5rem;
+  text-align:center; cursor:pointer; transition:.2s; background:#fff;
+}
+.tipo-hoja-btn:hover { border-color:var(--pe-yellow); background:#fffdf0; }
+.tipo-hoja-btn.selected { border-color:var(--pe-red); background:linear-gradient(135deg,#fff8f8,#fff); }
+.tipo-hoja-btn input { display:none; }
+.tipo-hoja-icon { font-size:1.6rem; display:block; margin-bottom:.25rem; }
+.tipo-hoja-label { font-size:.78rem; font-weight:600; color:#333; }
+.tipo-hoja-price { font-size:.72rem; color:#6c757d; }
+
+/* Acceso limitado banner */
+.banner-limite {
+  background:linear-gradient(135deg,#1a1a2e,#2a1a0e);
+  border-radius:16px; padding:1.2rem 1.5rem; color:#fff;
+  display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;
+}
+.banner-limite .banner-icon { font-size:2rem; flex-shrink:0; }
+
+/* Historial mini */
+.historial-mini-item {
+  display:flex; align-items:center; gap:.75rem;
+  padding:.6rem .75rem; border-radius:10px; border:1px solid #f0f0f0;
+  background:#fff; font-size:.85rem;
+}
+.historial-mini-item:hover { border-color:var(--pe-yellow); }
+
+/* Error box */
+.error-box {
+  display:none; background:#fff5f5; border:1.5px solid #ffa0a0;
+  border-radius:14px; padding:1rem 1.25rem; color:#c0392b;
+  align-items:center; gap:.75rem;
+}
+.error-box.visible { display:flex; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ═══════════ HERO ═══════════ -->
+<div class="calc-hero">
+  <div class="container">
+    <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+      <span class="section-label mb-0">Herramienta</span>
+      {% if es_autenticado %}
+        <span class="limite-badge">
+          <i class="bi bi-shield-check-fill" style="color:var(--pe-yellow)"></i>
+          Plan <span class="limite-val">{{ limite.label }}</span>
+          &nbsp;·&nbsp; hasta <span class="limite-val">{{ limite.max_mb }} MB</span>
+        </span>
+      {% else %}
+        <span class="limite-badge">
+          <i class="bi bi-lock-fill"></i>
+          Modo invitado — hasta <span class="limite-val">{{ limite.max_mb }} MB</span>
+        </span>
+      {% endif %}
+    </div>
+    <h1 style="font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,3.5rem);font-weight:900;">
+      Calculadora de<br><span style="color:var(--pe-yellow)">impresiones</span> 🖨️
+    </h1>
+    <p style="color:rgba(255,255,255,.68);max-width:520px;font-size:1.05rem;">
+      Sube tu PDF, elige el tipo de papel y obtén el costo estimado de impresión página por página.
+      El análisis se realiza en segundo plano con progreso en tiempo real.
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════ MAIN ═══════════ -->
+<section style="padding:3rem 0;background:#f4f6f9;min-height:60vh;">
+  <div class="container">
+    <div class="row g-4">
+
+      <!-- ── FORMULARIO ── -->
+      <div class="col-lg-5">
+
+        {% if not es_autenticado %}
+        <div class="banner-limite mb-3">
+          <div class="banner-icon">⚡</div>
+          <div>
+            <div class="fw-700 small">¿Necesitas procesar archivos más grandes?</div>
+            <div style="font-size:.82rem;color:rgba(255,255,255,.65)">
+              Inicia sesión para hasta <strong>50 MB</strong> o contacta a PaPeExpress para acceso premium de <strong>500 MB</strong>.
+            </div>
+            <div class="d-flex gap-2 mt-2">
+              <a href="/accounts/login/" class="btn btn-pe btn-sm rounded-pill">Iniciar sesión</a>
+              <a href="/contacto/" class="btn btn-outline-light btn-sm rounded-pill">Contactar</a>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="form-card p-4">
+          <h5 class="fw-700 mb-4"><i class="bi bi-calculator me-2" style="color:var(--pe-yellow)"></i>Configurar cálculo</h5>
+
+          <!-- Error box -->
+          <div class="error-box mb-3" id="errorBox">
+            <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+            <div id="errorMsg">Error</div>
+          </div>
+
+          <!-- Upload -->
+          <div class="mb-4">
+            <label class="form-label">Archivo PDF</label>
+            <div class="upload-zone" id="uploadZone">
+              <input type="file" id="pdfInput" accept=".pdf">
+              <div class="upload-icon"><i class="bi bi-file-earmark-pdf"></i></div>
+              <div class="fw-600 mb-1">Arrastra tu PDF aquí</div>
+              <div class="text-muted small">o haz clic para seleccionar</div>
+              <div class="mt-2 text-muted" style="font-size:.78rem">
+                Límite: <strong>{{ limite.max_mb }} MB</strong>
+                {% if not es_autenticado %} — <a href="/accounts/login/">Inicia sesión</a> para más{% endif %}
+              </div>
+            </div>
+            <div class="upload-filename mt-2" id="uploadFilename">
+              <i class="bi bi-file-earmark-pdf text-danger"></i>
+              <span id="uploadFilenameText"></span>
+              <button type="button" class="btn-close btn-close-sm ms-auto" id="removeFile" style="font-size:.6rem"></button>
+            </div>
+          </div>
+
+          <!-- Tipo hoja -->
+          <div class="mb-4">
+            <label class="form-label">Tipo de papel</label>
+            <div class="tipo-hoja-grid" id="tipoHojaGrid">
+              <label class="tipo-hoja-btn selected">
+                <input type="radio" name="tipo_hoja" value="bond" checked>
+                <span class="tipo-hoja-icon">📄</span>
+                <div class="tipo-hoja-label">Bond/Carta</div>
+                <div class="tipo-hoja-price">$1.00/hoja</div>
+              </label>
+              <label class="tipo-hoja-btn">
+                <input type="radio" name="tipo_hoja" value="fotografico">
+                <span class="tipo-hoja-icon">🖼️</span>
+                <div class="tipo-hoja-label">Fotográfico</div>
+                <div class="tipo-hoja-price">$20.00/hoja</div>
+              </label>
+              <label class="tipo-hoja-btn">
+                <input type="radio" name="tipo_hoja" value="etiqueta">
+                <span class="tipo-hoja-icon">🏷️</span>
+                <div class="tipo-hoja-label">Etiqueta</div>
+                <div class="tipo-hoja-price">$8.00/hoja</div>
+              </label>
+              <label class="tipo-hoja-btn">
+                <input type="radio" name="tipo_hoja" value="opalina">
+                <span class="tipo-hoja-icon">✨</span>
+                <div class="tipo-hoja-label">Opalina</div>
+                <div class="tipo-hoja-price">$5.00/hoja</div>
+              </label>
+              <label class="tipo-hoja-btn">
+                <input type="radio" name="tipo_hoja" value="vinil">
+                <span class="tipo-hoja-icon">🎨</span>
+                <div class="tipo-hoja-label">Vinil</div>
+                <div class="tipo-hoja-price">$15.00/hoja</div>
+              </label>
+              <label class="tipo-hoja-btn">
+                <input type="radio" name="tipo_hoja" value="couche">
+                <span class="tipo-hoja-icon">💎</span>
+                <div class="tipo-hoja-label">Couché</div>
+                <div class="tipo-hoja-price">$3.00/hoja</div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Precios tinta -->
+          <div class="mb-4">
+            <label class="form-label">Precio de tinta (por % de cobertura)</label>
+            <div class="row g-3">
+              <div class="col-6">
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" id="precioMin" class="form-control" value="{{ precio_min }}" min="0" step="0.5">
+                  <span class="input-group-text text-muted" style="font-size:.75rem">mín</span>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" id="precioMax" class="form-control" value="{{ precio_max }}" min="0" step="0.5">
+                  <span class="input-group-text text-muted" style="font-size:.75rem">máx</span>
+                </div>
+              </div>
+            </div>
+            <small class="text-muted">Páginas con 0% color → precio mín. Con 100% color → precio máx.</small>
+          </div>
+
+          <!-- Botón calcular -->
+          <button id="btnCalcular" class="btn btn-pe-submit" disabled>
+            <i class="bi bi-calculator me-2"></i>Calcular precio
+          </button>
+        </div>
+
+        <!-- Mini historial -->
+        {% if historial %}
+        <div class="form-card p-4 mt-3">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-700 mb-0">Mis cálculos recientes</h6>
+            <a href="/calculadora/historial/" class="btn btn-sm btn-outline-dark rounded-pill">Ver todos</a>
+          </div>
+          <div class="d-flex flex-column gap-2">
+            {% for c in historial %}
+            <div class="historial-mini-item">
+              <i class="bi bi-file-earmark-pdf text-danger"></i>
+              <div class="flex-grow-1 overflow-hidden">
+                <div class="fw-600 text-truncate" style="max-width:180px">{{ c.nombre_archivo }}</div>
+                <small class="text-muted">{{ c.num_paginas }} págs · {{ c.tipo_hoja }}</small>
+              </div>
+              <div class="text-end">
+                <div class="fw-700 text-pe-red">${{ c.costo_total }}</div>
+                <small class="text-muted">{{ c.creado|date:"d/m" }}</small>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- ── RESULTADO PANEL ── -->
+      <div class="col-lg-7">
+
+        <!-- Estado: esperando -->
+        <div id="panelEspera" class="text-center py-5">
+          <div style="font-size:5rem;filter:grayscale(.3)">🖨️</div>
+          <h5 class="mt-3 text-muted fw-600">Sube un PDF para calcular</h5>
+          <p class="text-muted small">El análisis se hace página por página,<br>verás el progreso en tiempo real.</p>
+        </div>
+
+        <!-- Estado: progreso -->
+        <div class="progress-section" id="progressSection">
+          <div class="progress-wrap">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <h6 class="fw-700 mb-0" id="progressTitle">Procesando PDF…</h6>
+              <span class="badge rounded-pill" style="background:var(--pe-grad);color:#fff" id="progressPct">0%</span>
+            </div>
+            <div id="progressFilename" class="text-muted small mb-2"></div>
+            <div class="progress-bar-pe">
+              <div class="progress-bar-pe-fill" id="progressFill"></div>
+            </div>
+            <div id="progressPaginaInfo" class="text-muted small text-end mb-3"></div>
+
+            <!-- Pasos -->
+            <div id="progressSteps">
+              <div class="progress-step active" id="step-conectando">
+                <div class="step-dot"></div>Conectando con el servidor
+              </div>
+              <div class="progress-step" id="step-subiendo">
+                <div class="step-dot"></div>Subiendo archivo
+              </div>
+              <div class="progress-step" id="step-procesando">
+                <div class="step-dot"></div>Analizando páginas
+              </div>
+              <div class="progress-step" id="step-calculando">
+                <div class="step-dot"></div>Calculando costos
+              </div>
+              <div class="progress-step" id="step-listo">
+                <div class="step-dot"></div>¡Listo!
+              </div>
+            </div>
+
+            <!-- Últimas páginas procesadas (stream) -->
+            <div id="streamPaginas" class="mt-3" style="max-height:160px;overflow-y:auto;display:none">
+              <div class="fw-600 small text-muted mb-2">Páginas analizadas:</div>
+              <div id="streamListado" class="d-flex flex-column gap-1"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estado: resultado -->
+        <div class="resultado-section" id="resultadoSection">
+          <!-- Stats -->
+          <div class="row g-3 mb-4" id="resultStats">
+            <div class="col-6 col-md-3">
+              <div class="result-stat-card" style="background:linear-gradient(135deg,#F5C200,#e8a800)">
+                <div class="result-stat-num text-white" id="resTotalCosto">$0</div>
+                <div class="text-white small opacity-75">Costo total</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="result-stat-card" style="background:linear-gradient(135deg,#E8192C,#c0001e)">
+                <div class="result-stat-num text-white" id="resPromedio">$0</div>
+                <div class="text-white small opacity-75">Por página</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="result-stat-card" style="background:linear-gradient(135deg,#0099D6,#0077aa)">
+                <div class="result-stat-num text-white" id="resPaginas">0</div>
+                <div class="text-white small opacity-75">Páginas</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="result-stat-card" style="background:linear-gradient(135deg,#1a1a2e,#2a2a4e)">
+                <div class="result-stat-num text-white" id="resTiempo">0s</div>
+                <div class="text-white small opacity-75">Tiempo</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabla detalle -->
+          <div class="form-card p-0 overflow-hidden">
+            <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+              <h6 class="fw-700 mb-0">Detalle por página</h6>
+              <button class="btn btn-sm btn-outline-secondary rounded-pill" id="btnNuevoCalculo">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>Nuevo cálculo
+              </button>
+            </div>
+            <div class="tabla-paginas">
+              <table class="table table-hover mb-0 align-middle" style="font-size:.87rem">
+                <thead>
+                  <tr>
+                    <th style="width:60px">Pág.</th>
+                    <th>Cobertura de tinta</th>
+                    <th>Hoja</th>
+                    <th>Tinta</th>
+                    <th class="text-end">Total</th>
+                  </tr>
+                </thead>
+                <tbody id="tablaBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ══════════════════════════════════════════════════
+//  PaPeExpress — Calculadora de Impresiones
+//  WebSocket + progreso en tiempo real
+// ══════════════════════════════════════════════════
+const CSRF = '{{ csrf_token }}';
+const MAX_MB = {{ limite.max_mb }};
+
+let channelName = null;
+let ws = null;
+let archivoSeleccionado = null;
+
+// ── UI refs ────────────────────────────────────────
+const uploadZone      = document.getElementById('uploadZone');
+const pdfInput        = document.getElementById('pdfInput');
+const uploadFilename  = document.getElementById('uploadFilename');
+const uploadFilenameT = document.getElementById('uploadFilenameText');
+const removeFile      = document.getElementById('removeFile');
+const btnCalcular     = document.getElementById('btnCalcular');
+const errorBox        = document.getElementById('errorBox');
+const errorMsg        = document.getElementById('errorMsg');
+
+const panelEspera     = document.getElementById('panelEspera');
+const progressSection = document.getElementById('progressSection');
+const resultadoSection= document.getElementById('resultadoSection');
+
+// ── WebSocket ──────────────────────────────────────
+function conectarWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws/calculadora/`);
+
+  ws.onopen = () => {
+    setStep('conectando', 'done');
+    setStep('subiendo', 'active');
+  };
+
+  ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    if (data.tipo === 'canal_listo') {
+      channelName = data.channel_name;
+      btnCalcular.disabled = !archivoSeleccionado;
+    } else if (data.tipo === 'pong') {
+      // ok
+    } else {
+      manejarProgreso(data);
+    }
+  };
+
+  ws.onerror = () => mostrarError('No se pudo conectar al servidor de tiempo real. Recarga la página.');
+  ws.onclose = () => { channelName = null; };
+
+  // Keepalive
+  setInterval(() => { if (ws && ws.readyState === 1) ws.send(JSON.stringify({tipo:'ping'})); }, 20000);
+}
+
+conectarWS();
+
+// ── Tipo hoja selector ─────────────────────────────
+document.querySelectorAll('.tipo-hoja-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tipo-hoja-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    btn.querySelector('input').checked = true;
+  });
+});
+
+// ── Drag & drop + selección ────────────────────────
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) seleccionarArchivo(file);
+});
+
+pdfInput.addEventListener('change', () => {
+  if (pdfInput.files[0]) seleccionarArchivo(pdfInput.files[0]);
+});
+
+removeFile.addEventListener('click', (e) => {
+  e.stopPropagation();
+  archivoSeleccionado = null;
+  pdfInput.value = '';
+  uploadFilename.style.display = 'none';
+  uploadZone.querySelector('.upload-icon').style.display = 'block';
+  btnCalcular.disabled = true;
+  limpiarError();
+});
+
+function seleccionarArchivo(file) {
+  limpiarError();
+  if (!file.name.toLowerCase().endsWith('.pdf')) {
+    mostrarError('Solo se aceptan archivos PDF.'); return;
+  }
+  const mb = file.size / (1024*1024);
+  if (mb > MAX_MB) {
+    mostrarError(`Este archivo pesa ${mb.toFixed(1)} MB. Tu límite actual es ${MAX_MB} MB.${
+      {% if not es_autenticado %}" Inicia sesión para ampliar tu límite."{% else %}""{% endif %}
+    }`); return;
+  }
+  archivoSeleccionado = file;
+  uploadFilenameT.textContent = file.name + ` (${mb.toFixed(1)} MB)`;
+  uploadFilename.style.display = 'flex';
+  uploadZone.querySelector('.upload-icon').style.display = 'none';
+  btnCalcular.disabled = !channelName;
+}
+
+// ── Calcular ───────────────────────────────────────
+btnCalcular.addEventListener('click', async () => {
+  if (!archivoSeleccionado || !channelName) return;
+  limpiarError();
+
+  const tipoHoja   = document.querySelector('input[name=tipo_hoja]:checked').value;
+  const precioMin  = parseFloat(document.getElementById('precioMin').value) || 1;
+  const precioMax  = parseFloat(document.getElementById('precioMax').value) || 8;
+
+  if (precioMax < precioMin) { mostrarError('El precio máximo debe ser mayor al mínimo.'); return; }
+
+  // Mostrar panel progreso
+  mostrarPanel('progress');
+  setStep('subiendo', 'active');
+  document.getElementById('progressFilename').textContent = archivoSeleccionado.name;
+  btnCalcular.disabled = true;
+
+  const fd = new FormData();
+  fd.append('pdf',          archivoSeleccionado);
+  fd.append('tipo_hoja',    tipoHoja);
+  fd.append('precio_minimo', precioMin);
+  fd.append('precio_maximo', precioMax);
+  fd.append('channel_name', channelName);
+  fd.append('csrfmiddlewaretoken', CSRF);
+
+  try {
+    const resp = await fetch('/calculadora/subir/', { method:'POST', body: fd });
+    const json = await resp.json();
+    if (!resp.ok || json.error) {
+      mostrarPanel('espera');
+      mostrarError(json.error || 'Error al subir el archivo.');
+      btnCalcular.disabled = false;
+    } else {
+      setStep('subiendo', 'done');
+      setStep('procesando', 'active');
+    }
+  } catch (err) {
+    mostrarPanel('espera');
+    mostrarError('Error de red al subir el archivo.');
+    btnCalcular.disabled = false;
+  }
+});
+
+// ── Manejar mensajes WS ────────────────────────────
+function manejarProgreso(data) {
+  const { estado, progreso, pagina_actual, total, ultimo_resultado,
+          resultados, costo_total, costo_promedio, tiempo, mensaje } = data;
+
+  if (estado === 'iniciando') {
+    setStep('subiendo', 'done');
+    setStep('procesando', 'active');
+    document.getElementById('progressTitle').textContent = 'Analizando páginas…';
+    return;
+  }
+
+  if (estado === 'procesando') {
+    actualizarBarra(progreso);
+    if (pagina_actual && total) {
+      document.getElementById('progressPaginaInfo').textContent =
+        `Página ${pagina_actual} de ${total}`;
+    }
+    if (ultimo_resultado) {
+      agregarStreamPagina(ultimo_resultado);
+    }
+    setStep('calculando', 'active');
+    return;
+  }
+
+  if (estado === 'completado') {
+    setStep('procesando', 'done');
+    setStep('calculando', 'done');
+    setStep('listo', 'done');
+    actualizarBarra(100);
+    document.getElementById('progressTitle').textContent = '¡Cálculo completado!';
+    setTimeout(() => mostrarResultados(resultados, costo_total, costo_promedio, tiempo, total), 600);
+    return;
+  }
+
+  if (estado === 'error') {
+    mostrarPanel('espera');
+    mostrarError(mensaje || 'Error en el procesamiento.');
+    btnCalcular.disabled = false;
+    return;
+  }
+}
+
+function actualizarBarra(pct) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent  = pct + '%';
+}
+
+function agregarStreamPagina(r) {
+  const stream = document.getElementById('streamListado');
+  const box    = document.getElementById('streamPaginas');
+  box.style.display = 'block';
+  const el = document.createElement('div');
+  el.style.cssText = 'display:flex;align-items:center;gap:.5rem;font-size:.8rem;padding:.2rem 0;';
+  const barW = Math.max(4, Math.round(r.porcentaje));
+  el.innerHTML = `
+    <span class="text-muted fw-600" style="width:28px">p${r.pagina}</span>
+    <div style="flex:1;background:#e9ecef;border-radius:50px;height:7px;overflow:hidden">
+      <div style="width:${barW}%;height:100%;background:linear-gradient(90deg,#F5C200,#E8192C);border-radius:50px"></div>
+    </div>
+    <span class="fw-600" style="width:46px;text-align:right">${r.porcentaje}%</span>
+    <span class="fw-700 text-pe-red" style="width:52px;text-align:right">$${r.costo}</span>`;
+  stream.appendChild(el);
+  stream.scrollTop = stream.scrollHeight;
+}
+
+// ── Resultados finales ─────────────────────────────
+function mostrarResultados(resultados, costoTotal, costoPromedio, tiempo, total) {
+  mostrarPanel('resultado');
+
+  document.getElementById('resTotalCosto').textContent = '$' + costoTotal.toFixed(2);
+  document.getElementById('resPromedio').textContent   = '$' + costoPromedio.toFixed(2);
+  document.getElementById('resPaginas').textContent    = total;
+  document.getElementById('resTiempo').textContent     = tiempo + 's';
+
+  const tbody = document.getElementById('tablaBody');
+  tbody.innerHTML = '';
+  resultados.forEach(r => {
+    const barW = Math.max(2, Math.round(r.porcentaje));
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="fw-700 text-center">${r.pagina}</td>
+      <td>
+        <div class="d-flex align-items-center gap-2">
+          <div style="flex:1;background:#e9ecef;border-radius:50px;height:8px;overflow:hidden">
+            <div class="barra-color" style="width:${barW}%"></div>
+          </div>
+          <span style="width:42px;font-size:.8rem;font-weight:600">${r.porcentaje}%</span>
+        </div>
+      </td>
+      <td class="text-muted small">$${r.precio_hoja}</td>
+      <td class="text-muted small">$${r.costo_porcentaje}</td>
+      <td class="text-end fw-700 text-pe-red">$${r.costo}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  btnCalcular.disabled = false;
+}
+
+// ── Nuevo cálculo ──────────────────────────────────
+document.getElementById('btnNuevoCalculo').addEventListener('click', () => {
+  mostrarPanel('espera');
+  archivoSeleccionado = null;
+  pdfInput.value = '';
+  uploadFilename.style.display = 'none';
+  uploadZone.querySelector('.upload-icon').style.display = 'block';
+  uploadFilenameT.textContent = '';
+  document.getElementById('streamListado').innerHTML = '';
+  document.getElementById('streamPaginas').style.display = 'none';
+  document.getElementById('tablaBody').innerHTML = '';
+  actualizarBarra(0);
+  resetSteps();
+  btnCalcular.disabled = true;
+});
+
+// ── Helpers de UI ──────────────────────────────────
+function mostrarPanel(panel) {
+  panelEspera.style.display      = panel === 'espera'     ? 'block' : 'none';
+  progressSection.classList.toggle('visible', panel === 'progress');
+  resultadoSection.classList.toggle('visible', panel === 'resultado');
+}
+
+function setStep(id, estado) {
+  const el = document.getElementById('step-' + id);
+  if (!el) return;
+  el.classList.remove('done', 'active');
+  if (estado) el.classList.add(estado);
+}
+
+function resetSteps() {
+  ['conectando','subiendo','procesando','calculando','listo'].forEach(s => {
+    const el = document.getElementById('step-' + s);
+    if (el) { el.classList.remove('done','active'); }
+  });
+  setStep('conectando', channelName ? 'done' : 'active');
+}
+
+function mostrarError(msg) {
+  errorBox.classList.add('visible');
+  errorMsg.textContent = msg;
+}
+function limpiarError() {
+  errorBox.classList.remove('visible');
+  errorMsg.textContent = '';
+}
+
+// Estado inicial
+resetSteps();
+if (channelName) setStep('conectando', 'done');
+</script>
+{% endblock %}

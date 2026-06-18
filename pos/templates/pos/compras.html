@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% block title %}Compras y Proveedores{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,#0d0d1e,#001a0d);padding:7rem 0 3rem;color:#fff;">
+  <div class="container-fluid px-4">
+    <span class="section-label">POS</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;">
+      Compras a Proveedores
+    </h1>
+    <p style="color:rgba(255,255,255,.6)">Registra entradas de mercancía y analiza tickets con IA</p>
+  </div>
+</div>
+
+<section style="padding:2rem 0;background:#f4f6f9;min-height:60vh;">
+  <div class="container-fluid px-4">
+    <div class="row g-4">
+
+      <!-- Lista compras -->
+      <div class="col-lg-8">
+        <div class="card border-0 rounded-4 overflow-hidden">
+          <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+            <h6 class="fw-700 mb-0">Últimas compras</h6>
+            <button class="btn btn-sm rounded-pill fw-700"
+                    style="background:linear-gradient(135deg,#FF0080,#FF1744);color:#fff"
+                    data-bs-toggle="modal" data-bs-target="#modalCompra">
+              <i class="bi bi-plus me-1"></i>Nueva compra
+            </button>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size:.85rem">
+              <thead style="background:#0d0d1e;color:#fff">
+                <tr>
+                  <th>Folio</th>
+                  <th>Proveedor</th>
+                  <th>Sucursal</th>
+                  <th>Total</th>
+                  <th>Fecha</th>
+                  <th>Estado</th>
+                  <th>Ticket</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for c in compras %}
+                <tr>
+                  <td class="fw-700">{{ c.folio|default:c.pk }}</td>
+                  <td>{{ c.proveedor.nombre }}</td>
+                  <td><small>{{ c.sucursal.nombre }}</small></td>
+                  <td class="fw-700" style="color:#00A846">${{ c.total|floatformat:2 }}</td>
+                  <td><small class="text-muted">{{ c.fecha_compra|date:"d/m/Y" }}</small></td>
+                  <td>
+                    <span class="badge rounded-pill
+                      {% if c.estado == 'recibida' %}bg-success
+                      {% elif c.estado == 'pendiente' %}bg-warning text-dark
+                      {% else %}bg-secondary{% endif %}">
+                      {{ c.get_estado_display }}
+                    </span>
+                  </td>
+                  <td>
+                    {% if c.ticket_imagen %}
+                    <button class="btn btn-sm btn-outline-dark rounded-pill"
+                            onclick="analizarTicket({{ c.id }})">
+                      🤖 Analizar IA
+                    </button>
+                    {% else %}
+                    <span class="text-muted small">Sin ticket</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center py-4 text-muted">Sin compras registradas.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel análisis IA -->
+      <div class="col-lg-4">
+        <div class="card border-0 rounded-4 p-4 mb-3" style="background:linear-gradient(135deg,#0d0d1e,#001230)">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <span style="font-size:1.5rem">🤖</span>
+            <div>
+              <div class="fw-800 text-white">Análisis IA de tickets</div>
+              <small style="color:rgba(255,255,255,.5)">Powered by Claude</small>
+            </div>
+          </div>
+          <p style="color:rgba(255,255,255,.55);font-size:.8rem;line-height:1.6">
+            Sube la foto del ticket al registrar la compra y haz clic en
+            <strong style="color:#FFD600">"Analizar IA"</strong> para extraer automáticamente:
+            proveedor, fecha, productos, cantidades y precios.
+          </p>
+          <div id="iaResultado" style="display:none">
+            <hr style="border-color:rgba(255,255,255,.1)">
+            <div class="fw-700 text-white small mb-2">Resultado del análisis:</div>
+            <pre id="iaJson" style="background:rgba(255,255,255,.08);border-radius:10px;padding:.75rem;
+              color:#00E676;font-size:.72rem;overflow:auto;max-height:300px;white-space:pre-wrap"></pre>
+          </div>
+          <div id="iaLoader" style="display:none;text-align:center;padding:1rem">
+            <div class="spinner-border spinner-border-sm text-warning"></div>
+            <div class="text-white-50 small mt-2">Analizando ticket…</div>
+          </div>
+        </div>
+
+        <!-- Comparar precios rápido -->
+        <div class="card border-0 rounded-4 p-4">
+          <h6 class="fw-700 mb-2">📈 Comparar precios proveedores</h6>
+          <p class="text-muted small mb-3">Compara el historial de precios de un producto entre todos tus proveedores.</p>
+          <a href="/pos/precios/comparar/" class="btn rounded-pill w-100 fw-700"
+             style="background:linear-gradient(135deg,#FFD600,#FF8C00);color:#0d0d1e">
+            Ver comparativa →
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Modal nueva compra -->
+<div class="modal fade" id="modalCompra" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 rounded-4 overflow-hidden">
+      <div style="background:linear-gradient(135deg,#0d0d1e,#001230);padding:1.2rem 1.5rem;color:#fff">
+        <h5 class="fw-800 mb-0">🧾 Registrar nueva compra</h5>
+      </div>
+      <div class="modal-body p-4">
+        <form method="post" action="/admin/pos/compraproveedor/add/" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-600">Proveedor</label>
+              <select name="proveedor" class="form-select" required>
+                <option value="">Seleccionar…</option>
+                {% for p in proveedores %}
+                <option value="{{ p.id }}">{{ p.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Folio / Nº Ticket</label>
+              <input type="text" name="folio" class="form-control" placeholder="Opcional">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Fecha de compra</label>
+              <input type="date" name="fecha_compra" class="form-control" value="{{ hoy|date:'Y-m-d' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Total ($)</label>
+              <input type="number" name="total" class="form-control" step="0.01" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-600">📸 Foto del ticket</label>
+              <input type="file" name="ticket_imagen" class="form-control" accept="image/*,.pdf">
+              <small class="text-muted">Sube la foto para análisis automático con IA</small>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-600">Notas</label>
+              <textarea name="notas" class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+          <div class="mt-3 d-flex gap-2">
+            <button type="submit" class="btn rounded-pill fw-700 px-4"
+                    style="background:linear-gradient(135deg,#00A846,#00C853);color:#fff">
+              Guardar compra
+            </button>
+            <button type="button" class="btn btn-outline-secondary rounded-pill px-4"
+                    data-bs-dismiss="modal">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+
+async function analizarTicket(compraId) {
+  document.getElementById('iaLoader').style.display = 'block';
+  document.getElementById('iaResultado').style.display = 'none';
+
+  try {
+    const fd = new FormData();
+    fd.append('compra_id', compraId);
+    fd.append('csrfmiddlewaretoken', CSRF);
+
+    const r = await fetch('/pos/compras/analizar-ticket/', { method:'POST', body: fd });
+    const d = await r.json();
+
+    document.getElementById('iaLoader').style.display = 'none';
+    document.getElementById('iaResultado').style.display = 'block';
+    document.getElementById('iaJson').textContent = JSON.stringify(d, null, 2);
+  } catch(e) {
+    document.getElementById('iaLoader').style.display = 'none';
+    document.getElementById('iaResultado').style.display = 'block';
+    document.getElementById('iaJson').textContent = 'Error: ' + e.message;
+  }
+}
+</script>
+{% endblock %}

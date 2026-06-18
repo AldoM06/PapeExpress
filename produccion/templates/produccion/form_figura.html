@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,#0d0d1e,#1e0d12);padding:7rem 0 3rem;color:#fff;">
+  <div class="container">
+    <a href="/produccion/figuras/" class="btn btn-outline-light btn-sm rounded-pill mb-3">
+      <i class="bi bi-arrow-left me-1"></i>Volver
+    </a>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;">{{ titulo }}</h1>
+  </div>
+</div>
+
+<section style="padding:2.5rem 0;background:#f4f6f9;">
+  <div class="container">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="row g-4">
+
+        <!-- Información general -->
+        <div class="col-lg-8">
+          <div class="card border-0 rounded-4 p-4 mb-4">
+            <h6 class="fw-700 mb-3"><i class="bi bi-info-circle me-2" style="color:#FF0080"></i>Información general</h6>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label fw-600">Nombre de la figura</label>
+                {{ form.nombre }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-600">Etapa actual</label>
+                {{ form.etapa_actual }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-600">Responsable</label>
+                {{ form.responsable }}
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-600">Descripción</label>
+                {{ form.descripcion }}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-600">Cantidad planificada</label>
+                {{ form.cantidad_planificada }}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-600">Cantidad disponible</label>
+                {{ form.cantidad_disponible }}
+              </div>
+              <div class="col-md-4 d-flex align-items-end">
+                <div class="form-check mb-2">
+                  {{ form.tiene_fomy }}
+                  <label class="form-check-label fw-600">¿Hay fomy disponible?</label>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-600">Costo estimado ($)</label>
+                {{ form.costo_estimado }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-600">Precio de venta ($)</label>
+                {{ form.precio_venta }}
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-600">Notas internas</label>
+                {{ form.notas }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Archivos de producción -->
+          <div class="card border-0 rounded-4 p-4 mb-4">
+            <h6 class="fw-700 mb-3"><i class="bi bi-folder2-open me-2" style="color:#FFD600"></i>Archivos de producción</h6>
+
+            <div class="row g-3">
+              <!-- Studio3 -->
+              <div class="col-12">
+                <div class="p-3 rounded-3 border" style="border-color:#e0e0e0!important">
+                  <div class="d-flex align-items-center gap-2 mb-2">
+                    <span style="font-size:1.5rem">✂️</span>
+                    <div>
+                      <div class="fw-700 small">Plantilla Studio3</div>
+                      <small class="text-muted">Archivo .studio3 para la máquina de corte</small>
+                    </div>
+                    {% if figura.archivo_studio3 %}
+                    <a href="{{ figura.archivo_studio3.url }}" class="btn btn-sm btn-outline-secondary rounded-pill ms-auto" download>
+                      <i class="bi bi-download me-1"></i>Actual
+                    </a>
+                    {% endif %}
+                  </div>
+                  {{ form.archivo_studio3 }}
+                </div>
+              </div>
+
+              <!-- PDF -->
+              <div class="col-md-6">
+                <div class="p-3 rounded-3 border" style="border-color:#e0e0e0!important">
+                  <div class="d-flex align-items-center gap-2 mb-2">
+                    <span style="font-size:1.5rem">📄</span>
+                    <div>
+                      <div class="fw-700 small">Instrucciones PDF</div>
+                      <small class="text-muted">Guía de armado</small>
+                    </div>
+                    {% if figura.archivo_instrucciones_pdf %}
+                    <a href="{{ figura.archivo_instrucciones_pdf.url }}" class="btn btn-sm btn-outline-secondary rounded-pill ms-auto" target="_blank">
+                      <i class="bi bi-eye me-1"></i>Ver
+                    </a>
+                    {% endif %}
+                  </div>
+                  {{ form.archivo_instrucciones_pdf }}
+                </div>
+              </div>
+
+              <!-- Word -->
+              <div class="col-md-6">
+                <div class="p-3 rounded-3 border" style="border-color:#e0e0e0!important">
+                  <div class="d-flex align-items-center gap-2 mb-2">
+                    <span style="font-size:1.5rem">📝</span>
+                    <div>
+                      <div class="fw-700 small">Instrucciones Word</div>
+                      <small class="text-muted">.docx editable</small>
+                    </div>
+                    {% if figura.archivo_instrucciones_word %}
+                    <a href="{{ figura.archivo_instrucciones_word.url }}" class="btn btn-sm btn-outline-secondary rounded-pill ms-auto" download>
+                      <i class="bi bi-download me-1"></i>Actual
+                    </a>
+                    {% endif %}
+                  </div>
+                  {{ form.archivo_instrucciones_word }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fotos de referencia -->
+          <div class="card border-0 rounded-4 p-4 mb-4">
+            <h6 class="fw-700 mb-3"><i class="bi bi-images me-2" style="color:#00CFFF"></i>Fotos de referencia (máx. 4)</h6>
+
+            {% if figura %}
+            <div class="row g-2 mb-3" id="fotosActuales">
+              {% for foto in figura.fotos.all %}
+              <div class="col-3" id="foto-wrap-{{ foto.pk }}">
+                <div style="position:relative;border-radius:12px;overflow:hidden;aspect-ratio:1">
+                  <img src="{{ foto.foto.url }}" style="width:100%;height:100%;object-fit:cover">
+                  <button type="button" onclick="eliminarFoto({{ foto.pk }}, this)"
+                    style="position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:50%;background:rgba(255,0,0,.85);color:#fff;border:none;cursor:pointer;font-size:.75rem">
+                    ✕
+                  </button>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="upload-zone-fotos p-3 rounded-3 text-center" style="border:2px dashed #dee2e6;cursor:pointer"
+                 onclick="document.getElementById('id_fotos').click()">
+              <div style="font-size:2rem">📸</div>
+              <div class="fw-600 small mt-1">Haz clic o arrastra fotos aquí</div>
+              <small class="text-muted">JPG, PNG — Máximo 4 fotos en total</small>
+            </div>
+            <input type="file" id="id_fotos" name="fotos" accept="image/*" multiple style="display:none"
+                   onchange="previewFotos(this)">
+            <div id="previewNuevasFotos" class="row g-2 mt-2"></div>
+          </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+          <div class="card border-0 rounded-4 p-4 mb-4">
+            <h6 class="fw-700 mb-3"><i class="bi bi-image me-2" style="color:#FF0080"></i>Imagen principal</h6>
+            {% if figura and figura.imagen_referencia %}
+            <img src="{{ figura.imagen_referencia.url }}" class="w-100 rounded-3 mb-3" style="height:160px;object-fit:cover">
+            {% endif %}
+            <label class="form-label fw-600">{{ form.imagen_referencia.label }}</label>
+            {{ form.imagen_referencia }}
+          </div>
+
+          <div class="card border-0 rounded-4 p-4 mb-4" style="background:linear-gradient(135deg,#fff9f0,#fff)">
+            <h6 class="fw-700 mb-2">💡 Tip Telegram</h6>
+            <p class="text-muted small mb-0">
+              Cada vez que actualices la etapa, se enviará automáticamente una notificación a tu grupo de Telegram con el progreso y el porcentaje de avance.
+            </p>
+          </div>
+
+          <button type="submit" class="btn w-100 fw-700 rounded-pill py-3"
+                  style="background:linear-gradient(135deg,#FF0080,#FF1744);color:#fff;font-size:1rem">
+            <i class="bi bi-check-circle me-2"></i>
+            {% if figura %}Guardar cambios{% else %}Crear figura{% endif %}
+          </button>
+
+          {% if figura %}
+          <a href="/produccion/figuras/{{ figura.pk }}/" class="btn btn-outline-secondary w-100 rounded-pill mt-2">
+            Cancelar
+          </a>
+          {% endif %}
+        </div>
+
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function previewFotos(input) {
+  const preview = document.getElementById('previewNuevasFotos');
+  preview.innerHTML = '';
+  Array.from(input.files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const col = document.createElement('div');
+      col.className = 'col-3';
+      col.innerHTML = `<div style="border-radius:12px;overflow:hidden;aspect-ratio:1;border:2px dashed #FFD600">
+        <img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover">
+      </div><small class="text-muted d-block text-center mt-1" style="font-size:.65rem">Nueva</small>`;
+      preview.appendChild(col);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function eliminarFoto(fotoPk, btn) {
+  if (!confirm('¿Eliminar esta foto?')) return;
+  const csrf = '{{ csrf_token }}';
+  fetch(`/produccion/fotos/${fotoPk}/eliminar/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest'}
+  }).then(r => r.json()).then(d => {
+    if (d.ok) {
+      document.getElementById('foto-wrap-' + fotoPk).remove();
+    }
+  });
+}
+</script>
+{% endblock %}

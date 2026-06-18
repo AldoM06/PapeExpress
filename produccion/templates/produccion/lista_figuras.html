@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% block title %}Figuras de Fomy{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,#0d0d1e,#1e0d12);padding:7rem 0 3rem;color:#fff;">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+      <div>
+        <span class="section-label">Producción</span>
+        <h1 style="font-family:'Playfair Display',serif;font-size:2.8rem;font-weight:900;">Figuras de Fomy</h1>
+        <p style="color:rgba(255,255,255,.65)">Pipeline de fabricación con notificaciones en tiempo real a Telegram</p>
+      </div>
+      {% if user.rol != 'cliente' and user.rol != 'socio' or user.is_superuser %}
+      <a href="/produccion/figuras/nueva/" class="btn rounded-pill fw-700 px-4"
+         style="background:linear-gradient(135deg,#FF0080,#FF1744);color:#fff">
+        <i class="bi bi-plus-lg me-1"></i>Nueva figura
+      </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<section style="padding:2.5rem 0;background:#f4f6f9;min-height:60vh;">
+  <div class="container">
+
+    <!-- Kanban -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h6 class="fw-700 mb-0">Vista Kanban</h6>
+    </div>
+    <div style="display:flex;gap:.75rem;overflow-x:auto;padding-bottom:.75rem;margin-bottom:2rem">
+      {% for etapa_key, etapa_nombre in etapas %}
+      {% with color=figura.color_etapa %}
+      <div style="min-width:200px;background:#fff;border-radius:16px;padding:.9rem;flex-shrink:0;border:1.5px solid #f0f0f0">
+        <div class="fw-800 small text-uppercase mb-2" style="letter-spacing:.05em;color:#888">
+          {{ etapa_nombre }}
+          <span class="badge rounded-pill bg-light text-dark ms-1" style="font-size:.6rem">
+            {{ figuras|length }}
+          </span>
+        </div>
+        {% for f in figuras %}{% if f.etapa_actual == etapa_key %}
+        <a href="/produccion/figuras/{{ f.id }}/" class="text-decoration-none">
+          <div style="background:#fafafa;border-radius:10px;padding:.7rem;margin-bottom:.5rem;border:1.5px solid #f0f0f0;transition:.2s"
+               onmouseover="this.style.borderColor='{{ f.color_etapa }}'" onmouseout="this.style.borderColor='#f0f0f0'">
+            <div class="fw-700 small text-dark mb-1">{{ f.nombre }}</div>
+            <div class="d-flex align-items-center gap-1 mb-2">
+              <div style="width:8px;height:8px;border-radius:50%;background:{{ f.color_etapa }};flex-shrink:0"></div>
+              <small class="text-muted">{{ f.get_etapa_actual_display }}</small>
+            </div>
+            <div style="height:5px;border-radius:50px;background:#e9ecef;overflow:hidden">
+              <div style="width:{{ f.porcentaje_avance }}%;height:100%;background:{{ f.color_etapa }};border-radius:50px"></div>
+            </div>
+            <div class="d-flex justify-content-between mt-1">
+              <small class="text-muted" style="font-size:.62rem">{{ f.porcentaje_avance }}%</small>
+              <small style="font-size:.62rem;color:{% if f.cantidad_disponible > 0 %}#00A846{% else %}#aaa{% endif %}">
+                {{ f.cantidad_disponible }} disp.
+              </small>
+            </div>
+          </div>
+        </a>
+        {% endif %}{% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Tabla -->
+    <div class="card border-0 rounded-4 overflow-hidden">
+      <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+        <h6 class="fw-700 mb-0">Todas las figuras ({{ figuras.count }})</h6>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:.87rem">
+          <thead style="background:#0d0d1e;color:#fff">
+            <tr>
+              <th>Figura</th>
+              <th>Etapa</th>
+              <th>Avance</th>
+              <th>Planificadas</th>
+              <th>Disponibles</th>
+              <th>Precio</th>
+              <th>Fomy</th>
+              <th>Archivos</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in figuras %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  {% if f.fotos.first %}
+                  <img src="{{ f.fotos.first.foto.url }}" width="36" height="36"
+                       class="rounded" style="object-fit:cover;flex-shrink:0">
+                  {% elif f.imagen_referencia %}
+                  <img src="{{ f.imagen_referencia.url }}" width="36" height="36"
+                       class="rounded" style="object-fit:cover;flex-shrink:0">
+                  {% else %}
+                  <div style="width:36px;height:36px;border-radius:8px;background:#f5f5f5;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">🎨</div>
+                  {% endif %}
+                  <span class="fw-700">{{ f.nombre }}</span>
+                </div>
+              </td>
+              <td>
+                <span class="badge rounded-pill" style="background:{{ f.color_etapa }}">
+                  {{ f.get_etapa_actual_display }}
+                </span>
+              </td>
+              <td style="min-width:100px">
+                <div style="height:7px;border-radius:50px;background:#e9ecef;overflow:hidden">
+                  <div style="width:{{ f.porcentaje_avance }}%;height:100%;background:{{ f.color_etapa }};border-radius:50px"></div>
+                </div>
+                <small class="text-muted">{{ f.porcentaje_avance }}%</small>
+              </td>
+              <td class="text-center">{{ f.cantidad_planificada }}</td>
+              <td class="text-center">
+                <span class="fw-700" style="color:{% if f.cantidad_disponible > 0 %}#00A846{% else %}#aaa{% endif %}">
+                  {{ f.cantidad_disponible }}
+                </span>
+              </td>
+              <td>{% if f.precio_venta %}<span class="fw-700" style="color:#FF0080">${{ f.precio_venta }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+              <td>{% if f.tiene_fomy %}<span class="badge bg-success">Sí</span>{% else %}<span class="badge bg-light text-dark">No</span>{% endif %}</td>
+              <td>
+                <div class="d-flex gap-1">
+                  {% if f.archivo_studio3 %}<span title="Studio3" style="font-size:1rem">✂️</span>{% endif %}
+                  {% if f.archivo_instrucciones_pdf %}<span title="PDF" style="font-size:1rem">📄</span>{% endif %}
+                  {% if f.archivo_instrucciones_word %}<span title="Word" style="font-size:1rem">📝</span>{% endif %}
+                  {% if f.fotos.count %}<span title="{{ f.fotos.count }} foto(s)" style="font-size:1rem">📸</span>{% endif %}
+                </div>
+              </td>
+              <td>
+                <div class="d-flex gap-1">
+                  <a href="/produccion/figuras/{{ f.id }}/" class="btn btn-sm btn-outline-dark rounded-pill">Ver</a>
+                  {% if user.rol != 'cliente' %}
+                  <a href="/produccion/figuras/{{ f.id }}/editar/" class="btn btn-sm btn-outline-secondary rounded-pill">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9" class="text-center text-muted py-5">
+              <div style="font-size:3rem">🎨</div>
+              <p class="mt-2">No hay figuras registradas.</p>
+              <a href="/produccion/figuras/nueva/" class="btn btn-pe rounded-pill">Crear primera figura</a>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

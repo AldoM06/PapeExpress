@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+{% block title %}{{ figura.nombre }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.archivo-card {
+  background:#fff; border:1.5px solid #f0f0f0; border-radius:14px;
+  padding:1rem 1.2rem; display:flex; align-items:center; gap:1rem;
+  transition:.2s;
+}
+.archivo-card:hover { border-color:#FF0080; box-shadow:0 4px 16px rgba(255,0,128,.1); }
+.archivo-icon { width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0; }
+.foto-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.65rem; }
+.foto-item { position:relative; border-radius:14px; overflow:hidden; aspect-ratio:1; }
+.foto-item img { width:100%;height:100%;object-fit:cover; }
+.foto-delete {
+  position:absolute;top:6px;right:6px;
+  width:26px;height:26px;border-radius:50%;
+  background:rgba(255,0,0,.85);color:#fff;
+  border:none;font-size:.75rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:.2s;
+}
+.foto-item:hover .foto-delete { opacity:1; }
+.etapa-pill {
+  display:inline-flex; align-items:center; gap:.4rem;
+  padding:.35rem 1rem; border-radius:50px; font-weight:800; font-size:.85rem; color:#fff;
+}
+.pipeline-bar { display:flex; gap:.3rem; flex-wrap:wrap; margin-bottom:.75rem; }
+.pip-step {
+  flex:1; min-width:55px; padding:.4rem .3rem; border-radius:8px;
+  font-size:.6rem; font-weight:800; text-align:center; text-transform:uppercase;
+  letter-spacing:.04em; border:2px solid #f0f0f0; color:#bbb; background:#fafafa;
+  transition:.2s;
+}
+.pip-step.done  { background:#e8f5e9; border-color:#81c784; color:#2e7d32; }
+.pip-step.activo { color:#fff; border-color:transparent; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,#0d0d1e,#1e0d12);padding:7rem 0 3rem;color:#fff;">
+  <div class="container">
+    <a href="/produccion/figuras/" class="btn btn-outline-light btn-sm rounded-pill mb-3">
+      <i class="bi bi-arrow-left me-1"></i>Volver
+    </a>
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <h1 style="font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;margin:0">
+        {{ figura.nombre }}
+      </h1>
+      <span class="etapa-pill" style="background:{{ figura.color_etapa }}">
+        {{ figura.get_etapa_actual_display }}
+      </span>
+    </div>
+  </div>
+</div>
+
+<section style="padding:2.5rem 0;background:#f4f6f9;min-height:60vh;">
+  <div class="container">
+    <div class="row g-4">
+
+      <!-- ── IZQUIERDA ── -->
+      <div class="col-lg-8">
+
+        <!-- Pipeline -->
+        <div class="card border-0 rounded-4 p-4 mb-4">
+          <h6 class="fw-700 mb-3">Pipeline de fabricación</h6>
+          <div class="pipeline-bar">
+            {% for etapa_key, etapa_nombre in etapas %}
+            <div class="pip-step {% if figura.etapa_actual == etapa_key %}activo{% elif figura.porcentaje_avance > forloop.counter0|add:'0' %}done{% endif %}"
+                 {% if figura.etapa_actual == etapa_key %}style="background:{{ figura.color_etapa }}"{% endif %}>
+              {{ etapa_nombre|truncatechars:10 }}
+            </div>
+            {% endfor %}
+          </div>
+          <div class="progress" style="height:10px;border-radius:50px">
+            <div class="progress-bar" style="width:{{ figura.porcentaje_avance }}%;background:{{ figura.color_etapa }};border-radius:50px"></div>
+          </div>
+          <small class="text-muted mt-1">{{ figura.porcentaje_avance }}% completado</small>
+        </div>
+
+        <!-- Avanzar etapa -->
+        {% if user.rol != 'cliente' and user.rol != 'socio' or user.is_superuser %}
+        <div class="card border-0 rounded-4 p-4 mb-4">
+          <h6 class="fw-700 mb-3"><i class="bi bi-arrow-right-circle me-2" style="color:#FF0080"></i>Actualizar etapa</h6>
+          <form method="post" action="/produccion/figuras/{{ figura.id }}/avanzar/">
+            {% csrf_token %}
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Nueva etapa</label>
+                <select name="etapa" class="form-select">
+                  {% for etapa_key, etapa_nombre in etapas %}
+                  <option value="{{ etapa_key }}" {% if figura.etapa_actual == etapa_key %}selected{% endif %}>
+                    {{ etapa_nombre }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Notas (opcional)</label>
+                <input type="text" name="notas" class="form-control" placeholder="Observaciones…">
+              </div>
+            </div>
+            <div class="d-flex gap-2 mt-3">
+              <button type="submit" class="btn rounded-pill px-4 fw-700" style="background:linear-gradient(135deg,#FF0080,#FF1744);color:#fff">
+                <i class="bi bi-arrow-right-circle me-2"></i>Actualizar etapa + Notificar Telegram
+              </button>
+              <a href="/produccion/figuras/{{ figura.id }}/editar/" class="btn btn-outline-secondary rounded-pill px-4">
+                <i class="bi bi-pencil me-1"></i>Editar figura
+              </a>
+            </div>
+          </form>
+        </div>
+        {% endif %}
+
+        <!-- Fotos de referencia -->
+        <div class="card border-0 rounded-4 p-4 mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-700 mb-0"><i class="bi bi-images me-2" style="color:#00CFFF"></i>Fotos de referencia ({{ fotos.count }}/4)</h6>
+            {% if fotos.count < 4 and user.rol != 'cliente' %}
+            <button class="btn btn-sm btn-outline-dark rounded-pill" onclick="document.getElementById('inputFotos').click()">
+              <i class="bi bi-plus me-1"></i>Añadir foto
+            </button>
+            <form id="formFotos" method="post" action="/produccion/figuras/{{ figura.id }}/editar/" enctype="multipart/form-data" style="display:none">
+              {% csrf_token %}
+              <input type="file" id="inputFotos" name="fotos" accept="image/*" multiple onchange="document.getElementById('formFotos').submit()">
+            </form>
+            {% endif %}
+          </div>
+
+          {% if fotos %}
+          <div class="foto-grid">
+            {% for foto in fotos %}
+            <div class="foto-item">
+              <img src="{{ foto.foto.url }}" alt="Foto {{ forloop.counter }}">
+              {% if user.rol != 'cliente' %}
+              <form method="post" action="/produccion/fotos/{{ foto.pk }}/eliminar/">
+                {% csrf_token %}
+                <button type="submit" class="foto-delete" title="Eliminar foto" onclick="return confirm('¿Eliminar esta foto?')">
+                  <i class="bi bi-x"></i>
+                </button>
+              </form>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-center py-4 text-muted">
+            <i class="bi bi-images" style="font-size:2.5rem"></i>
+            <p class="mt-2 small">Sin fotos de referencia todavía.</p>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Archivos de producción -->
+        <div class="card border-0 rounded-4 p-4 mb-4">
+          <h6 class="fw-700 mb-3"><i class="bi bi-folder2-open me-2" style="color:#FFD600"></i>Archivos de producción</h6>
+          <div class="d-flex flex-column gap-2">
+
+            <!-- Studio3 -->
+            <div class="archivo-card">
+              <div class="archivo-icon" style="background:#e3f2fd">✂️</div>
+              <div class="flex-grow-1">
+                <div class="fw-700 small">Plantilla Studio3</div>
+                <small class="text-muted">.studio3 — Máquina de corte</small>
+              </div>
+              {% if figura.archivo_studio3 %}
+              <a href="{{ figura.archivo_studio3.url }}" class="btn btn-sm btn-outline-dark rounded-pill" download>
+                <i class="bi bi-download me-1"></i>Descargar
+              </a>
+              {% else %}
+              <span class="badge bg-secondary rounded-pill">Sin archivo</span>
+              {% endif %}
+            </div>
+
+            <!-- PDF instrucciones -->
+            <div class="archivo-card">
+              <div class="archivo-icon" style="background:#fce4ec">📄</div>
+              <div class="flex-grow-1">
+                <div class="fw-700 small">Instrucciones PDF</div>
+                <small class="text-muted">Guía de armado en PDF</small>
+              </div>
+              {% if figura.archivo_instrucciones_pdf %}
+              <a href="{{ figura.archivo_instrucciones_pdf.url }}" class="btn btn-sm btn-outline-dark rounded-pill" target="_blank">
+                <i class="bi bi-eye me-1"></i>Ver
+              </a>
+              {% else %}
+              <span class="badge bg-secondary rounded-pill">Sin archivo</span>
+              {% endif %}
+            </div>
+
+            <!-- Word instrucciones -->
+            <div class="archivo-card">
+              <div class="archivo-icon" style="background:#e8f5e9">📝</div>
+              <div class="flex-grow-1">
+                <div class="fw-700 small">Instrucciones Word</div>
+                <small class="text-muted">.docx editable</small>
+              </div>
+              {% if figura.archivo_instrucciones_word %}
+              <a href="{{ figura.archivo_instrucciones_word.url }}" class="btn btn-sm btn-outline-dark rounded-pill" download>
+                <i class="bi bi-download me-1"></i>Descargar
+              </a>
+              {% else %}
+              <span class="badge bg-secondary rounded-pill">Sin archivo</span>
+              {% endif %}
+            </div>
+
+          </div>
+          {% if user.rol != 'cliente' %}
+          <a href="/produccion/figuras/{{ figura.id }}/editar/" class="btn btn-sm btn-outline-secondary rounded-pill mt-3">
+            <i class="bi bi-upload me-1"></i>Actualizar archivos
+          </a>
+          {% endif %}
+        </div>
+
+        <!-- Historial -->
+        <div class="card border-0 rounded-4 p-4">
+          <h6 class="fw-700 mb-3"><i class="bi bi-clock-history me-2"></i>Historial de etapas</h6>
+          {% for h in historial %}
+          <div class="d-flex gap-3 align-items-start mb-3 pb-3 border-bottom">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:34px;height:34px;background:#f8f9fa;font-size:.9rem">→</div>
+            <div>
+              <div class="fw-700 small">{{ h.get_etapa_anterior_display }} → {{ h.get_etapa_nueva_display }}</div>
+              {% if h.notas %}<p class="text-muted small mb-1">{{ h.notas }}</p>{% endif %}
+              <small class="text-muted">{{ h.fecha|date:"d/m/Y H:i" }}
+                {% if h.usuario %}— {{ h.usuario.get_full_name|default:h.usuario.username }}{% endif %}
+              </small>
+            </div>
+          </div>
+          {% empty %}
+          <p class="text-muted small">Sin cambios registrados.</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- ── DERECHA ── -->
+      <div class="col-lg-4">
+        {% if figura.imagen_referencia %}
+        <div class="card border-0 rounded-4 overflow-hidden mb-4">
+          <img src="{{ figura.imagen_referencia.url }}" class="w-100" style="height:200px;object-fit:cover">
+        </div>
+        {% endif %}
+
+        <div class="card border-0 rounded-4 p-4 mb-3">
+          <h6 class="fw-700 mb-3">Detalles</h6>
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted small">Planificadas</span>
+            <span class="fw-700">{{ figura.cantidad_planificada }} pzas</span>
+          </div>
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted small">Disponibles</span>
+            <span class="fw-700" style="color:#00A846">{{ figura.cantidad_disponible }} pzas</span>
+          </div>
+          {% if figura.costo_estimado %}
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted small">Costo est.</span>
+            <span class="fw-700">${{ figura.costo_estimado }}</span>
+          </div>
+          {% endif %}
+          {% if figura.precio_venta %}
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted small">Precio venta</span>
+            <span class="fw-700" style="color:#FF0080">${{ figura.precio_venta }}</span>
+          </div>
+          {% endif %}
+          <div class="d-flex justify-content-between py-2">
+            <span class="text-muted small">¿Hay fomy?</span>
+            <span>{% if figura.tiene_fomy %}<span class="badge bg-success">Sí</span>{% else %}<span class="badge bg-warning text-dark">No</span>{% endif %}</span>
+          </div>
+        </div>
+
+        {% if figura.notas %}
+        <div class="card border-0 rounded-4 p-4 mb-3">
+          <h6 class="fw-700 mb-2">Notas</h6>
+          <p class="text-muted small mb-0">{{ figura.notas }}</p>
+        </div>
+        {% endif %}
+
+        {% if user.is_superuser or user.rol == 'admin' %}
+        <div class="card border-0 rounded-4 p-4 border border-danger">
+          <h6 class="fw-700 text-danger mb-3">Zona de peligro</h6>
+          <a href="/produccion/figuras/{{ figura.id }}/eliminar/" class="btn btn-outline-danger rounded-pill w-100 btn-sm">
+            <i class="bi bi-trash me-1"></i>Eliminar figura
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

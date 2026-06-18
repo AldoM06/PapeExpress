@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}Historial global de cálculos{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,#0d0d1e,#0d1e12);padding:8rem 0 4rem;color:#fff;">
+  <div class="container">
+    <span class="section-label">Admin</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.8rem;font-weight:900;">
+      Todos los cálculos
+    </h1>
+    <p style="color:rgba(255,255,255,.65)">Historial completo de la calculadora de impresiones</p>
+  </div>
+</div>
+
+<section style="padding:3rem 0;background:#f4f6f9;min-height:60vh;">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h5 class="fw-700 mb-0">{{ calculos.count }} registro{{ calculos.count|pluralize }}</h5>
+      <a href="/calculadora/" class="btn btn-pe rounded-pill btn-sm">
+        <i class="bi bi-calculator me-2"></i>Ir a calculadora
+      </a>
+    </div>
+
+    <div class="card border-0 rounded-4 overflow-hidden">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:.87rem">
+          <thead style="background:#1a1a2e;color:#fff;">
+            <tr>
+              <th>Archivo</th>
+              <th>Usuario</th>
+              <th>Páginas</th>
+              <th>Papel</th>
+              <th>Costo total</th>
+              <th>IP</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in calculos %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-file-earmark-pdf text-danger"></i>
+                  <span style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.nombre_archivo }}</span>
+                </div>
+              </td>
+              <td>
+                {% if c.usuario %}
+                  <span class="badge rounded-pill" style="background:#e9ecef;color:#333">{{ c.usuario.username }}</span>
+                {% else %}
+                  <span class="text-muted small">Invitado</span>
+                {% endif %}
+              </td>
+              <td>{{ c.num_paginas }}</td>
+              <td><small>{{ c.tipo_hoja }}</small></td>
+              <td><span class="fw-700 text-pe-red">${{ c.costo_total }}</span></td>
+              <td><small class="text-muted">{{ c.ip_cliente|default:"—" }}</small></td>
+              <td><small class="text-muted">{{ c.creado|date:"d/m/Y H:i" }}</small></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

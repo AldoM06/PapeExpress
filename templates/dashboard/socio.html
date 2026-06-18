@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% block title %}Panel Socio Comercial{% endblock %}
+
+{% block extra_css %}
+<style>
+body { padding-top: 0; }
+.dash-wrap { display: flex; min-height: 100vh; }
+nav.pe-navbar { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dash-wrap">
+  <div class="dash-sidebar">
+    <div class="sidebar-logo" style="padding:.25rem 0 1.25rem">
+      <img src="/static/img/logo.png" alt="PaPeExpress" style="height:46px;object-fit:contain;filter:brightness(0) invert(1);opacity:.9">
+    </div>
+    <a href="/accounts/dashboard/socio/" class="sidebar-nav-link active"><i class="bi bi-speedometer2"></i>Dashboard</a>
+    <a href="/productos/" class="sidebar-nav-link"><i class="bi bi-grid-fill"></i>Catálogo</a>
+    <a href="/socios/mapa/" class="sidebar-nav-link"><i class="bi bi-map-fill"></i>Mapa red</a>
+    <a href="/contacto/" class="sidebar-nav-link"><i class="bi bi-envelope-fill"></i>Contacto</a>
+    <hr style="border-color:rgba(255,255,255,.1)">
+    <a href="/" class="sidebar-nav-link"><i class="bi bi-house-fill"></i>Sitio</a>
+    <a href="/accounts/logout/" class="sidebar-nav-link"><i class="bi bi-box-arrow-right"></i>Salir</a>
+  </div>
+
+  <div class="dash-content">
+    <div class="dash-topbar justify-content-between">
+      <div>
+        <h5 class="fw-700 mb-0">Hola, {{ user.first_name|default:user.username }}</h5>
+        <small class="text-muted">Portal Socios Comerciales</small>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="live-dot"></span>
+        <small class="text-success fw-600">Producción en vivo</small>
+      </div>
+    </div>
+
+    <div class="card border-0 rounded-4 p-4 mb-4">
+      <div class="d-flex align-items-center gap-2 mb-4">
+        <h6 class="fw-700 mb-0">Estado de producción</h6>
+        <span class="live-dot"></span>
+        <small class="text-muted">Actualización en tiempo real</small>
+      </div>
+
+      <!-- Kanban board -->
+      <div class="kanban-board" id="kanbanBoard">
+        <div class="text-center py-4 text-muted w-100">
+          <div class="spinner-border spinner-border-sm me-2"></div>Cargando datos de producción...
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista figuras actual -->
+    <div class="card border-0 rounded-4 p-4">
+      <h6 class="fw-700 mb-3">Figuras en producción</h6>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle" id="tablaFiguras">
+          <thead class="table-dark">
+            <tr>
+              <th>Figura</th>
+              <th>Etapa actual</th>
+              <th>Avance</th>
+              <th>Actualizado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in figuras %}
+            <tr id="row-{{ f.id }}">
+              <td class="fw-600">{{ f.nombre }}</td>
+              <td>
+                <span class="badge rounded-pill" style="background:{{ f.color_etapa }}">
+                  {{ f.get_etapa_actual_display }}
+                </span>
+              </td>
+              <td style="min-width:140px">
+                <div class="progress" style="height:8px;border-radius:50px">
+                  <div class="progress-bar" style="width:{{ f.porcentaje_avance }}%;background:{{ f.color_etapa }}"></div>
+                </div>
+                <small class="text-muted">{{ f.porcentaje_avance }}%</small>
+              </td>
+              <td><small class="text-muted">{{ f.actualizado|date:"d/m/Y H:i" }}</small></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center text-muted py-4">No hay figuras registradas.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const ETAPAS_ORDEN = ['propuesta','diseño','armado_digital','muestra','materiales','corte','armado','embolsado','etiquetado','terminado'];
+const ETAPAS_DISPLAY = {
+  propuesta:'Propuesta',diseño:'Diseño',armado_digital:'Armado Digital',
+  muestra:'Muestra',materiales:'Materiales y Costos',corte:'Corte',
+  armado:'Armado',embolsado:'Embolsado',etiquetado:'Etiquetado',terminado:'Terminado'
+};
+
+function buildKanban(figuras) {
+  const board = document.getElementById('kanbanBoard');
+  board.innerHTML = '';
+  ETAPAS_ORDEN.forEach(etapa => {
+    const items = figuras.filter(f => f.etapa === etapa);
+    if (items.length === 0) return;
+    const col = document.createElement('div');
+    col.className = 'kanban-col';
+    col.innerHTML = `<div class="kanban-col-header" style="color:${items[0].color}">${ETAPAS_DISPLAY[etapa]} <span class="badge" style="background:${items[0].color};color:#fff">${items.length}</span></div>`;
+    items.forEach(f => {
+      const card = document.createElement('div');
+      card.className = 'kanban-card';
+      card.id = 'kcard-' + f.id;
+      card.innerHTML = `
+        <div class="fw-600 small mb-1">${f.nombre}</div>
+        <div class="d-flex align-items-center gap-1 mb-2">
+          <span class="kanban-card etapa-dot" style="background:${f.color}"></span>
+          <small class="text-muted">${f.etapa_display}</small>
+        </div>
+        <div class="progress" style="height:5px;border-radius:50px">
+          <div class="progress-bar" style="width:${f.porcentaje}%;background:${f.color}"></div>
+        </div>`;
+      col.appendChild(card);
+    });
+    board.appendChild(col);
+  });
+  if (!board.innerHTML) {
+    board.innerHTML = '<p class="text-muted py-3">Sin figuras en producción actualmente.</p>';
+  }
+}
+
+// WebSocket
+const wsProto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+const ws = new WebSocket(`${wsProto}://${window.location.host}/ws/produccion/`);
+
+let todasFiguras = [];
+
+ws.onmessage = (e) => {
+  const data = JSON.parse(e.data);
+  if (data.tipo === 'estado_inicial') {
+    todasFiguras = data.figuras;
+    buildKanban(todasFiguras);
+  } else if (data.tipo === 'actualizacion') {
+    const f = data.figura;
+    const idx = todasFiguras.findIndex(x => x.id === f.id);
+    if (idx !== -1) todasFiguras[idx] = f; else todasFiguras.push(f);
+    buildKanban(todasFiguras);
+
+    // Actualizar fila de tabla
+    const row = document.getElementById('row-' + f.id);
+    if (row) {
+      row.cells[1].innerHTML = `<span class="badge rounded-pill" style="background:${f.color}">${f.etapa_display}</span>`;
+      row.cells[2].innerHTML = `<div class="progress" style="height:8px;border-radius:50px"><div class="progress-bar" style="width:${f.porcentaje}%;background:${f.color}"></div></div><small class="text-muted">${f.porcentaje}%</small>`;
+      row.cells[3].innerHTML = `<small class="text-muted">${f.actualizado}</small>`;
+    }
+  }
+};
+
+ws.onerror = () => {
+  document.getElementById('kanbanBoard').innerHTML = '<p class="text-warning">WebSocket no disponible. <a href="">Recargar</a></p>';
+};
+</script>
+{% endblock %}

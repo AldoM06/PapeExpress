@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block title %}{{ figura.nombre }}{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,#0a0e1a,#1a0a2e);padding:8rem 0 4rem;color:#fff;">
+  <div class="container">
+    <a href="/produccion/figuras/" class="btn btn-outline-light btn-sm rounded-pill mb-3"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;">{{ figura.nombre }}</h1>
+    <span class="badge rounded-pill fs-6 px-3 py-2" style="background:{{ figura.color_etapa }}">{{ figura.get_etapa_actual_display }}</span>
+  </div>
+</div>
+
+<section style="padding:3rem 0;background:#f8f9fa;">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <!-- Progress pipeline -->
+        <div class="card border-0 rounded-4 p-4 mb-4">
+          <h6 class="fw-700 mb-4">Pipeline de fabricación</h6>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            {% for etapa_key, etapa_nombre in etapas %}
+            <div class="d-flex flex-column align-items-center" style="min-width:80px">
+              <div class="rounded-circle d-flex align-items-center justify-content-center fw-700 small mb-1"
+                   style="width:40px;height:40px;
+                   {% if figura.etapa_actual == etapa_key %}background:{{ figura.color_etapa }};color:#fff;{% elif figura.porcentaje_avance > forloop.counter0|floatformat:0|add:'0'|add:'0' %}background:#28a745;color:#fff;{% else %}background:#e9ecef;color:#6c757d;{% endif %}">
+                {{ forloop.counter }}
+              </div>
+              <small class="text-center" style="font-size:.7rem;color:{% if figura.etapa_actual == etapa_key %}{{ figura.color_etapa }}{% else %}#adb5bd{% endif %}">{{ etapa_nombre }}</small>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="progress" style="height:10px;border-radius:50px">
+            <div class="progress-bar" style="width:{{ figura.porcentaje_avance }}%;background:{{ figura.color_etapa }};border-radius:50px"></div>
+          </div>
+          <small class="text-muted mt-1">{{ figura.porcentaje_avance }}% completado</small>
+        </div>
+
+        <!-- Avanzar etapa (si tiene permisos) -->
+        {% if user.rol != 'cliente' and user.rol != 'socio' or user.is_superuser %}
+        <div class="card border-0 rounded-4 p-4 mb-4">
+          <h6 class="fw-700 mb-3">Actualizar etapa</h6>
+          <form method="post" action="/produccion/figuras/{{ figura.id }}/avanzar/">
+            {% csrf_token %}
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Nueva etapa</label>
+                <select name="etapa" class="form-select">
+                  {% for etapa_key, etapa_nombre in etapas %}
+                  <option value="{{ etapa_key }}" {% if figura.etapa_actual == etapa_key %}selected{% endif %}>{{ etapa_nombre }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Notas (opcional)</label>
+                <input type="text" name="notas" class="form-control" placeholder="Observaciones">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-pe rounded-pill mt-3 px-4">
+              <i class="bi bi-arrow-right-circle me-2"></i>Actualizar etapa
+            </button>
+          </form>
+        </div>
+        {% endif %}
+
+        <!-- Historial -->
+        <div class="card border-0 rounded-4 p-4">
+          <h6 class="fw-700 mb-3">Historial de etapas</h6>
+          {% for h in historial %}
+          <div class="d-flex gap-3 align-items-start mb-3">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:36px;height:36px;background:#f0f2f5">
+              <i class="bi bi-arrow-right text-muted"></i>
+            </div>
+            <div>
+              <div class="fw-600 small">{{ h.get_etapa_anterior_display }} → {{ h.get_etapa_nueva_display }}</div>
+              {% if h.notas %}<p class="text-muted small mb-0">{{ h.notas }}</p>{% endif %}
+              <small class="text-muted">{{ h.fecha|date:"d/m/Y H:i" }} — {{ h.usuario.get_full_name|default:h.usuario.username }}</small>
+            </div>
+          </div>
+          {% empty %}
+          <p class="text-muted">Sin cambios registrados aún.</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Sidebar info -->
+      <div class="col-lg-4">
+        {% if figura.imagen_referencia %}
+        <div class="card border-0 rounded-4 overflow-hidden mb-4">
+          <img src="{{ figura.imagen_referencia.url }}" class="w-100" style="height:200px;object-fit:cover" alt="{{ figura.nombre }}">
+        </div>
+        {% endif %}
+        <div class="card border-0 rounded-4 p-4">
+          <h6 class="fw-700 mb-3">Detalles</h6>
+          <div class="d-flex justify-content-between py-2 border-bottom"><span class="text-muted small">Cantidad planificada</span><span class="fw-600">{{ figura.cantidad_planificada }}</span></div>
+          {% if figura.costo_estimado %}<div class="d-flex justify-content-between py-2 border-bottom"><span class="text-muted small">Costo estimado</span><span class="fw-600">${{ figura.costo_estimado }}</span></div>{% endif %}
+          {% if figura.precio_venta %}<div class="d-flex justify-content-between py-2 border-bottom"><span class="text-muted small">Precio de venta</span><span class="fw-600">${{ figura.precio_venta }}</span></div>{% endif %}
+          <div class="d-flex justify-content-between py-2 border-bottom"><span class="text-muted small">¿Hay fomy?</span><span>{% if figura.tiene_fomy %}<span class="badge bg-success">Sí</span>{% else %}<span class="badge bg-warning text-dark">No</span>{% endif %}</span></div>
+          {% if figura.responsable %}<div class="d-flex justify-content-between py-2"><span class="text-muted small">Responsable</span><span class="fw-600">{{ figura.responsable.get_full_name }}</span></div>{% endif %}
+          {% if figura.notas %}
+          <div class="mt-3 p-3 rounded-3" style="background:#f8f9fa">
+            <small class="text-muted d-block fw-600 mb-1">Notas</small>
+            <small>{{ figura.notas }}</small>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

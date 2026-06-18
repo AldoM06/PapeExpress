@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}Mi historial de cálculos{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,#0d0d1e,#1e0d12);padding:8rem 0 4rem;color:#fff;">
+  <div class="container">
+    <span class="section-label">Calculadora</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.8rem;font-weight:900;">
+      Mis cálculos
+    </h1>
+    <p style="color:rgba(255,255,255,.65)">Historial de cotizaciones de impresión</p>
+  </div>
+</div>
+
+<section style="padding:3rem 0;background:#f4f6f9;min-height:60vh;">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h5 class="fw-700 mb-0">{{ calculos.count }} cálculo{{ calculos.count|pluralize }}</h5>
+      <a href="/calculadora/" class="btn btn-pe rounded-pill">
+        <i class="bi bi-calculator me-2"></i>Nuevo cálculo
+      </a>
+    </div>
+
+    {% if calculos %}
+    <div class="card border-0 rounded-4 overflow-hidden">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead style="background:#1a1a2e;color:#fff;">
+            <tr>
+              <th>Archivo</th>
+              <th>Páginas</th>
+              <th>Tipo papel</th>
+              <th>Precio tinta</th>
+              <th>Costo total</th>
+              <th>Promedio/pág</th>
+              <th>Tiempo</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in calculos %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-file-earmark-pdf text-danger"></i>
+                  <span class="fw-600" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.nombre_archivo }}</span>
+                </div>
+              </td>
+              <td><span class="badge bg-secondary rounded-pill">{{ c.num_paginas }}</span></td>
+              <td><span class="badge rounded-pill" style="background:#e9ecef;color:#555">{{ c.tipo_hoja }}</span></td>
+              <td><small class="text-muted">${{ c.precio_minimo }} – ${{ c.precio_maximo }}</small></td>
+              <td><span class="fw-700 text-pe-red">${{ c.costo_total }}</span></td>
+              <td><span class="fw-600">${{ c.costo_promedio }}</span></td>
+              <td><small class="text-muted">{{ c.tiempo_proceso|floatformat:1 }}s</small></td>
+              <td><small class="text-muted">{{ c.creado|date:"d/m/Y H:i" }}</small></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+      <div style="font-size:4rem">🖨️</div>
+      <h5 class="mt-3 text-muted">Aún no has realizado cálculos</h5>
+      <a href="/calculadora/" class="btn btn-pe rounded-pill mt-3">Hacer mi primer cálculo</a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

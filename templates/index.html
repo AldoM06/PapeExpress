@@ -1,0 +1,446 @@
+{% extends 'base.html' %}
+{% block title %}Inicio{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── HERO PAPEEXPRESS COLORIDO ───────────────────────── */
+.hero-section {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 8% 20%, rgba(245,194,0,.45), transparent 28%),
+    radial-gradient(circle at 90% 18%, rgba(0,153,214,.45), transparent 30%),
+    radial-gradient(circle at 10% 90%, rgba(232,25,44,.35), transparent 30%),
+    linear-gradient(135deg, #fff7cf 0%, #ffffff 45%, #dff6ff 100%);
+  display:flex;
+  align-items:center;
+  position:relative;
+  overflow:hidden;
+  padding-top:95px;
+}
+.hero-canvas { position:absolute; inset:0; z-index:0; opacity:.45; }
+.hero-content { position:relative; z-index:2; }
+.hero-badge {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:#fff;
+  border:2px solid var(--pe-yellow);
+  box-shadow:0 8px 24px rgba(245,194,0,.25);
+  border-radius:50px;
+  padding:7px 20px;
+  color:var(--pe-red);
+  font-size:.88rem;
+  font-weight:800;
+  margin-bottom:1.5rem;
+}
+.hero-title {
+  font-family:'Playfair Display',serif;
+  font-size:clamp(2.8rem,6vw,5rem);
+  font-weight:900;
+  line-height:1.05;
+  color:var(--pe-dark);
+  margin-bottom:1.5rem;
+}
+.hero-title .accent-yellow { color:var(--pe-red); }
+.hero-subtitle {
+  font-size:1.15rem;
+  color:#333;
+  max-width:520px;
+  margin-bottom:2.5rem;
+  line-height:1.7;
+  font-weight:500;
+}
+.hero-btns { display:flex; gap:1rem; flex-wrap:wrap; }
+.btn-hero-primary {
+  background:linear-gradient(135deg,var(--pe-red),var(--pe-yellow));
+  color:#fff;
+  font-weight:900;
+  border:none;
+  padding:.85rem 2.2rem;
+  border-radius:50px;
+  font-size:1rem;
+  box-shadow:0 10px 26px rgba(232,25,44,.28);
+  transition:.2s;
+}
+.btn-hero-primary:hover { transform:translateY(-3px); box-shadow:0 14px 34px rgba(232,25,44,.38); color:#fff; }
+.btn-hero-outline {
+  border:2px solid var(--pe-blue);
+  color:var(--pe-blue);
+  background:#fff;
+  padding:.85rem 2.2rem;
+  border-radius:50px;
+  font-size:1rem;
+  font-weight:900;
+  transition:.2s;
+}
+.btn-hero-outline:hover { background:var(--pe-blue); color:#fff; }
+
+.orb { position:absolute; border-radius:50%; filter:blur(80px); opacity:.35; animation:float-orb 8s ease-in-out infinite; }
+.orb-1 { width:380px;height:380px;background:var(--pe-yellow);top:-100px;right:-50px; }
+.orb-2 { width:300px;height:300px;background:var(--pe-red);bottom:-50px;left:-80px;animation-delay:-3s; }
+.orb-3 { width:240px;height:240px;background:var(--pe-blue);top:48%;right:28%;animation-delay:-6s; }
+@keyframes float-orb { 0%,100%{transform:translate(0,0)} 50%{transform:translate(20px,-30px)} }
+
+.hero-stats { display:flex; gap:2.5rem; margin-top:3rem; flex-wrap:wrap; }
+.stat-item { text-align:center; }
+.stat-num { font-family:'Playfair Display',serif; font-size:2.1rem; font-weight:900; color:var(--pe-red); line-height:1; }
+.stat-label { font-size:.8rem; color:#555; text-transform:uppercase; letter-spacing:.08em; font-weight:800; }
+
+.hero-3d-wrap { perspective:1200px; }
+.hero-3d-card {
+  width:100%;
+  max-width:420px;
+  margin:auto;
+  background:linear-gradient(145deg,#ffffff,#fff8d7);
+  border:3px solid rgba(245,194,0,.75);
+  backdrop-filter:blur(20px);
+  border-radius:28px;
+  padding:2rem;
+  transform:rotateY(-10deg) rotateX(5deg);
+  transform-style:preserve-3d;
+  animation:card-float 6s ease-in-out infinite;
+  box-shadow:24px 28px 60px rgba(0,153,214,.22), -12px -12px 34px rgba(232,25,44,.16);
+}
+@keyframes card-float { 0%,100%{transform:rotateY(-10deg) rotateX(5deg) translateY(0)} 50%{transform:rotateY(-6deg) rotateX(3deg) translateY(-14px)} }
+.card-inner-item {
+  background:#fff;
+  border-radius:16px;
+  padding:1rem 1.2rem;
+  margin-bottom:.8rem;
+  display:flex;
+  align-items:center;
+  gap:1rem;
+  border-left:7px solid var(--pe-red);
+  box-shadow:0 5px 18px rgba(0,0,0,.08);
+  animation:slide-in .6s ease forwards;
+  opacity:0;
+}
+.card-inner-item:nth-child(1){animation-delay:.2s}
+.card-inner-item:nth-child(2){animation-delay:.4s}
+.card-inner-item:nth-child(3){animation-delay:.6s}
+.card-inner-item:nth-child(4){animation-delay:.8s}
+@keyframes slide-in { from{opacity:0;transform:translateX(-20px)} to{opacity:1;transform:translateX(0)} }
+.card-icon { width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0; }
+
+.section-label { display:inline-block;font-size:.8rem;font-weight:900;letter-spacing:.15em;text-transform:uppercase;color:var(--pe-blue);margin-bottom:.5rem; }
+.section-title { font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,3rem);font-weight:900;color:var(--pe-red);line-height:1.2;margin-bottom:1rem; }
+.section-subtitle { color:#555;font-size:1.05rem;max-width:520px; }
+
+.prod-card { border:2px solid rgba(245,194,0,.35);border-radius:22px;overflow:hidden;box-shadow:0 6px 22px rgba(0,153,214,.12);transition:.3s;height:100%; }
+.prod-card:hover { transform:translateY(-6px);box-shadow:0 14px 38px rgba(232,25,44,.18); }
+.prod-card .card-img-top { height:200px;object-fit:cover; }
+.prod-card .prod-no-img { height:200px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#fff3bd,#e6f8ff);font-size:3rem;color:var(--pe-blue); }
+.prod-badge { position:absolute;top:12px;left:12px;background:linear-gradient(135deg,var(--pe-red),var(--pe-yellow));color:#fff;padding:5px 14px;border-radius:50px;font-size:.75rem;font-weight:900; }
+
+.historia-section { background:linear-gradient(135deg,var(--pe-red) 0%,var(--pe-dark) 48%,var(--pe-blue) 100%);color:#fff;border-radius:32px;padding:4rem 3rem;box-shadow:0 16px 45px rgba(0,0,0,.18); }
+.timeline-dot { width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,var(--pe-yellow),#fff0a8);display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--pe-red);flex-shrink:0; }
+
+.cat-card { border-radius:24px;overflow:hidden;transition:.3s;cursor:pointer;background:#fff;border:2px solid rgba(0,153,214,.18);box-shadow:0 6px 22px rgba(0,153,214,.12);height:100%; }
+.cat-card:hover { transform:translateY(-6px);box-shadow:0 16px 40px rgba(232,25,44,.16); }
+.cat-icon-wrap { height:120px;display:flex;align-items:center;justify-content:center;font-size:3.5rem; }
+.cta-papeexpress { padding:5rem 0;background:linear-gradient(135deg,var(--pe-red) 0%,var(--pe-yellow) 55%,var(--pe-blue) 100%); }
+
+@media (max-width:991px) {
+  .hero-section { min-height:auto; padding:8rem 0 4rem; }
+  .hero-stats { gap:1.5rem; }
+}
+@media (max-width:575px) {
+  .hero-title { font-size:2.6rem; }
+  .hero-btns .btn { width:100%; }
+  .historia-section { padding:2rem 1.4rem; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ═══════════════════════════════ HERO ═══════════════════════════════ -->
+<section class="hero-section">
+  <canvas id="heroCanvas" class="hero-canvas"></canvas>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <div class="container">
+    <div class="row align-items-center g-5 py-5">
+      <div class="col-lg-6 hero-content">
+        <div class="hero-badge">
+          <i class="bi bi-stars"></i>
+          Fabricantes y Distribuidores Mexicanos
+        </div>
+        <h1 class="hero-title">
+          Papelería con<br>
+          <span class="accent-yellow">alma creativa</span>
+        </h1>
+        <p class="hero-subtitle">
+          Diseñamos, fabricamos y distribuimos papelería escolar y artística. De la idea al producto, con la calidad que tu negocio merece.
+        </p>
+        <div class="hero-btns">
+          <a href="/productos/" class="btn btn-hero-primary">
+            <i class="bi bi-grid-fill me-2"></i>Ver catálogo
+          </a>
+          <a href="/contacto/" class="btn btn-hero-outline">
+            <i class="bi bi-chat-dots me-2"></i>Contáctanos
+          </a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-item">
+            <div class="stat-num">+500</div>
+            <div class="stat-label">Productos</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">+200</div>
+            <div class="stat-label">Socios</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">15+</div>
+            <div class="stat-label">Años</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6 hero-content d-none d-lg-block">
+        <div class="hero-3d-wrap">
+          <div class="hero-3d-card">
+            <p class="small mb-3 fw-700 text-pe-blue">
+              <i class="bi bi-lightning-charge-fill text-warning me-1"></i>
+              Lo que fabricamos hoy
+            </p>
+            <div class="card-inner-item">
+              <div class="card-icon" style="background:rgba(245,194,0,.25)">🦋</div>
+              <div>
+                <div class="fw-800 small">Mariposa Fomy</div>
+                <div class="text-muted" style="font-size:.78rem">Etapa: Corte <span class="badge bg-warning text-dark ms-1">En proceso</span></div>
+              </div>
+            </div>
+            <div class="card-inner-item">
+              <div class="card-icon" style="background:rgba(232,25,44,.13)">🌸</div>
+              <div>
+                <div class="fw-800 small">Flores Primavera</div>
+                <div class="text-muted" style="font-size:.78rem">Etapa: Armado <span class="badge bg-info text-dark ms-1">Avanzando</span></div>
+              </div>
+            </div>
+            <div class="card-inner-item">
+              <div class="card-icon" style="background:rgba(0,153,214,.15)">📓</div>
+              <div>
+                <div class="fw-800 small">Libreta Diseño Propio</div>
+                <div class="text-muted" style="font-size:.78rem">Etapa: Embolsado <span class="badge bg-success ms-1">Casi listo</span></div>
+              </div>
+            </div>
+            <div class="card-inner-item">
+              <div class="card-icon" style="background:rgba(245,194,0,.22)">⭐</div>
+              <div>
+                <div class="fw-800 small">Estrellas Navideñas</div>
+                <div class="text-muted" style="font-size:.78rem">Etapa: Propuesta <span class="badge bg-secondary ms-1">Nuevo</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ PRODUCTOS EN PORTADA ══════════════════════ -->
+{% if productos_portada %}
+<section class="py-6" style="padding:5rem 0;">
+  <div class="container">
+    <div class="text-center mb-5">
+      <span class="section-label">Catálogo</span>
+      <h2 class="section-title">Productos destacados</h2>
+      <p class="section-subtitle mx-auto">Una selección especial de nuestros mejores artículos, listos para tu negocio.</p>
+    </div>
+    <div class="row g-4">
+      {% for producto in productos_portada %}
+      <div class="col-6 col-md-4 col-lg-3">
+        <div class="card prod-card position-relative">
+          {% if producto.imagen %}
+            <img src="{{ producto.imagen.url }}" class="card-img-top" alt="{{ producto.nombre }}">
+          {% else %}
+            <div class="prod-no-img"><i class="bi bi-box-seam"></i></div>
+          {% endif %}
+          {% if producto.destacado %}<span class="prod-badge">Destacado</span>{% endif %}
+          <div class="card-body">
+            <h6 class="card-title mb-1 fw-700">{{ producto.nombre }}</h6>
+            {% if producto.categoria %}<small class="text-muted">{{ producto.categoria.nombre }}</small>{% endif %}
+            {% if producto.precio %}
+            <div class="mt-2 fw-800 text-pe">${{ producto.precio }}</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="text-center mt-5">
+      <a href="/productos/" class="btn btn-pe-outline btn-lg rounded-pill px-5">
+        Ver todos los productos <i class="bi bi-arrow-right ms-2"></i>
+      </a>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ═══════════════════════════ HISTORIA ══════════════════════════════ -->
+<section class="py-6" style="padding:5rem 0; background:#fff8df;">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-5">
+        <span class="section-label">Nuestra historia</span>
+        <h2 class="section-title">Pasión por la<br>papelería desde el inicio</h2>
+        <p class="text-muted lh-lg">
+          {% if config.historia %}{{ config.historia }}{% else %}
+          PapeExpress nació con una sencilla pero poderosa idea: acercar papelería de calidad a quienes más la necesitan. A lo largo de los años hemos crecido de un pequeño taller familiar hasta convertirnos en fabricantes y distribuidores reconocidos en la región.
+          {% endif %}
+        </p>
+        <a href="/nosotros/" class="btn btn-pe-outline rounded-pill mt-3">
+          Conocer más <i class="bi bi-arrow-right ms-2"></i>
+        </a>
+      </div>
+      <div class="col-lg-7">
+        <div class="historia-section">
+          <div class="row g-4">
+            {% for item in "1234"|make_list %}
+            <div class="col-6">
+              <div class="d-flex gap-3">
+                <div class="timeline-dot flex-shrink-0">
+                  {% if forloop.counter == 1 %}<i class="bi bi-lightbulb-fill"></i>
+                  {% elif forloop.counter == 2 %}<i class="bi bi-tools"></i>
+                  {% elif forloop.counter == 3 %}<i class="bi bi-truck"></i>
+                  {% else %}<i class="bi bi-people-fill"></i>{% endif %}
+                </div>
+                <div>
+                  <h6 class="text-white fw-800 mb-1">
+                    {% if forloop.counter == 1 %}Origen
+                    {% elif forloop.counter == 2 %}Fabricación propia
+                    {% elif forloop.counter == 3 %}Distribución nacional
+                    {% else %}Comunidad de socios{% endif %}
+                  </h6>
+                  <p class="text-white-50 small mb-0">
+                    {% if forloop.counter == 1 %}Todo empezó con la ilusión de hacer las cosas diferente.
+                    {% elif forloop.counter == 2 %}Diseñamos y fabricamos nuestras propias figuras y libretas.
+                    {% elif forloop.counter == 3 %}Llevamos nuestros productos a cientos de puntos de venta.
+                    {% else %}Una red de socios comprometidos con la calidad.{% endif %}
+                  </p>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ CATEGORÍAS ═══════════════════════════════ -->
+<section class="py-6" style="padding:5rem 0;">
+  <div class="container">
+    <div class="text-center mb-5">
+      <span class="section-label">Lo que ofrecemos</span>
+      <h2 class="section-title">Dos líneas de productos</h2>
+    </div>
+    <div class="row g-4 justify-content-center">
+      <div class="col-md-5">
+        <a href="/productos/?tipo=reventa" class="text-decoration-none">
+          <div class="cat-card p-4 text-center">
+            <div class="cat-icon-wrap" style="background:linear-gradient(135deg,#fff3bd,#e8f9ff)">📦</div>
+            <h4 class="fw-800 mt-2 mb-1" style="color:var(--pe-red)">Papelería General</h4>
+            <p class="text-muted small">Cuadernos, colores, plumas, marcadores y mucho más. Todo lo que una papelería necesita.</p>
+            <span class="badge rounded-pill" style="background:var(--pe-blue);color:#fff">Ver catálogo →</span>
+          </div>
+        </a>
+      </div>
+      <div class="col-md-5">
+        <a href="/productos/?tipo=fabricado" class="text-decoration-none">
+          <div class="cat-card p-4 text-center">
+            <div class="cat-icon-wrap" style="background:linear-gradient(135deg,#ffe4e8,#fff3bd)">🎨</div>
+            <h4 class="fw-800 mt-2 mb-1" style="color:var(--pe-red)">Fabricados por nosotros</h4>
+            <p class="text-muted small">Figuras de fomy artesanales y libretas con diseños únicos. Hechos con cariño.</p>
+            <span class="badge rounded-pill" style="background:var(--pe-red);color:#fff">Ver fabricados →</span>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ CTA FINAL ═════════════════════════════════ -->
+<section class="cta-papeexpress">
+  <div class="container text-center">
+    <h2 class="text-white fw-900 mb-3" style="font-family:'Playfair Display',serif;font-size:2.5rem">
+      ¿Listo para ser socio comercial?
+    </h2>
+    <p class="text-white mb-4 fs-5 fw-600">Únete a nuestra red de distribución y lleva PapeExpress a tu comunidad.</p>
+    <div class="d-flex gap-3 justify-content-center flex-wrap">
+      <a href="/contacto/" class="btn btn-hero-primary btn-lg">
+        <i class="bi bi-handshake me-2"></i>Quiero ser socio
+      </a>
+      <a href="/socios/mapa/" class="btn btn-hero-outline btn-lg">
+        <i class="bi bi-map me-2"></i>Ver red actual
+      </a>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Partículas en canvas ───────────────────────────────
+const canvas = document.getElementById('heroCanvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+
+function resize() {
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * canvas.width;
+    this.y = Math.random() * canvas.height;
+    this.vx = (Math.random() - .5) * .4;
+    this.vy = (Math.random() - .5) * .4;
+    this.r = Math.random() * 2 + .5;
+    this.alpha = Math.random() * .5 + .1;
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.reset();
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(0,153,214,${this.alpha})`;
+    ctx.fill();
+  }
+}
+
+for (let i = 0; i < 120; i++) particles.push(new Particle());
+
+function animate() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles.forEach(p => { p.update(); p.draw(); });
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 100) {
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(232,25,44,${.12 * (1 - dist/100)})`;
+        ctx.lineWidth = .5;
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(animate);
+}
+animate();
+</script>
+{% endblock %}

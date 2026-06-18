@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Crear cuenta{% endblock %}
+
+{% block content %}
+<div style="min-height:100vh;background:linear-gradient(135deg,#0a0e1a,#1a0a2e);display:flex;align-items:center;padding:100px 0 3rem;">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-7">
+        <div class="form-card">
+          <div class="text-center mb-4">
+            <h3 class="fw-900" style="font-family:'Playfair Display',serif;">Crear cuenta</h3>
+            <p class="text-muted">Únete a PapeExpress como cliente o solicita acceso como socio comercial.</p>
+          </div>
+          <form method="post">
+            {% csrf_token %}
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">{{ form.first_name.label }}</label>
+                {{ form.first_name }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">{{ form.last_name.label }}</label>
+                {{ form.last_name }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">{{ form.username.label }}</label>
+                {{ form.username }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">{{ form.email.label }}</label>
+                {{ form.email }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">{{ form.empresa.label }}</label>
+                {{ form.empresa }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">{{ form.telefono.label }}</label>
+                {{ form.telefono }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">{{ form.password1.label }}</label>
+                {{ form.password1 }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">{{ form.password2.label }}</label>
+                {{ form.password2 }}
+              </div>
+              {% for field in form %}{% if field.errors %}<div class="col-12"><small class="text-danger">{{ field.label }}: {{ field.errors|join:", " }}</small></div>{% endif %}{% endfor %}
+            </div>
+            <button type="submit" class="btn btn-pe-submit mt-4">
+              <i class="bi bi-person-plus-fill me-2"></i>Crear mi cuenta
+            </button>
+          </form>
+          <p class="text-center text-muted mt-3 small">¿Ya tienes cuenta? <a href="/accounts/login/" class="text-pe">Inicia sesión</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

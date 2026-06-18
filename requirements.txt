@@ -1,0 +1,13 @@
+Django>=4.2,<5.0
+Pillow>=10.0
+django-crispy-forms>=2.0
+crispy-bootstrap5>=0.7
+channels>=4.0
+channels-redis>=4.0
+daphne>=4.0
+pdf2image>=1.16
+numpy>=1.24
+stripe>=7.0
+python-decouple>=3.8
+apscheduler>=3.10
+anthropic>=0.25

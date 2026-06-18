@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Figuras de Fomy{% endblock %}
+
+{% block content %}
+<div style="background:linear-gradient(135deg,#0a0e1a,#1a0a2e);padding:8rem 0 4rem;color:#fff;">
+  <div class="container">
+    <span class="section-label">Producción</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:3rem;font-weight:900;">Figuras de Fomy</h1>
+    <p style="color:rgba(255,255,255,.7)">Seguimiento del pipeline de fabricación</p>
+  </div>
+</div>
+
+<section style="padding:3rem 0;background:#f8f9fa;min-height:60vh;">
+  <div class="container">
+    <!-- Kanban -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="fw-700 mb-0">Estado por etapa</h5>
+      {% if user.rol in 'admin,produccion,diseño,almacen' or user.is_superuser %}
+      <a href="/admin/produccion/figurafomy/add/" class="btn btn-pe rounded-pill btn-sm">
+        <i class="bi bi-plus me-1"></i>Nueva figura
+      </a>
+      {% endif %}
+    </div>
+    <div class="kanban-board mb-5">
+      {% for etapa_key, etapa_nombre in etapas %}
+      {% with figuras_etapa=figuras|dictsortreversed:"actualizado" %}
+      <div class="kanban-col">
+        <div class="kanban-col-header">{{ etapa_nombre }}</div>
+        {% for f in figuras %}
+          {% if f.etapa_actual == etapa_key %}
+          <a href="/produccion/figuras/{{ f.id }}/" class="text-decoration-none">
+            <div class="kanban-card">
+              <div class="fw-600 small mb-1 text-dark">{{ f.nombre }}</div>
+              {% if f.responsable %}<small class="text-muted">{{ f.responsable.first_name }}</small>{% endif %}
+              <div class="progress mt-2" style="height:5px;border-radius:50px">
+                <div class="progress-bar" style="width:{{ f.porcentaje_avance }}%;background:{{ f.color_etapa }}"></div>
+              </div>
+            </div>
+          </a>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endwith %}
+      {% endfor %}
+    </div>
+
+    <!-- Tabla -->
+    <div class="card border-0 rounded-4 p-4">
+      <h6 class="fw-700 mb-3">Todas las figuras</h6>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th>Figura</th>
+              <th>Etapa</th>
+              <th>Avance</th>
+              <th>Cantidad</th>
+              <th>Fomy</th>
+              <th>Actualizado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in figuras %}
+            <tr>
+              <td class="fw-600">
+                {% if f.imagen_referencia %}<img src="{{ f.imagen_referencia.url }}" width="36" height="36" class="rounded me-2" style="object-fit:cover">{% endif %}
+                {{ f.nombre }}
+              </td>
+              <td><span class="badge rounded-pill" style="background:{{ f.color_etapa }}">{{ f.get_etapa_actual_display }}</span></td>
+              <td style="min-width:120px">
+                <div class="progress" style="height:6px;border-radius:50px">
+                  <div class="progress-bar" style="width:{{ f.porcentaje_avance }}%;background:{{ f.color_etapa }}"></div>
+                </div>
+                <small class="text-muted">{{ f.porcentaje_avance }}%</small>
+              </td>
+              <td>{{ f.cantidad_planificada }}</td>
+              <td>
+                {% if f.tiene_fomy %}<span class="badge bg-success">Sí</span>{% else %}<span class="badge bg-warning text-dark">No</span>{% endif %}
+              </td>
+              <td><small class="text-muted">{{ f.actualizado|date:"d/m/Y H:i" }}</small></td>
+              <td><a href="/produccion/figuras/{{ f.id }}/" class="btn btn-sm btn-outline-dark rounded-pill">Ver</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">No hay figuras registradas.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
