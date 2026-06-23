@@ -14,12 +14,12 @@ logger = logging.getLogger(__name__)
 
 # ── Tipos de hoja y precios ──────────────────────────────
 TIPOS_HOJA = {
-    'bond':       {'nombre': 'Bond / Carta',       'precio': 1.0},
-    'fotografico':{'nombre': 'Fotográfico',         'precio': 20.0},
+    'bond':       {'nombre': 'Bond / Carta',       'precio': .20},
+    'fotografico':{'nombre': 'Fotográfico',         'precio': 10.0},
     'etiqueta':   {'nombre': 'Etiqueta',            'precio': 6.0},
     'opalina':    {'nombre': 'Opalina',             'precio': 2.5},
     'vinil':      {'nombre': 'Vinil',               'precio': 15.0},
-    'couche':     {'nombre': 'Couché / Brillante',  'precio': 3.0},
+    'couche':     {'nombre': 'Couché / Brillante',  'precio': 1.2},
 }
 
 UMBRAL_BLANCO = 248   # píxeles >= este valor en los 3 canales = blanco
