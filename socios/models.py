@@ -49,14 +49,26 @@ class SocioComercial(models.Model):
     def whatsapp_1_url(self):
         if self.whatsapp_1:
             num = self.whatsapp_1.replace('+', '').replace(' ', '').replace('-', '')
-            return f'https://wa.me/{num}'
+            msg = (
+                f"Hola, te contacto a través de *PaPeExpress* 📦\n"
+                f"Vi tu negocio *{self.nombre}* en su red de socios.\n"
+                f"¿Me puedes dar más información?"
+            )
+            import urllib.parse
+            return f'https://wa.me/{num}?text={urllib.parse.quote(msg)}'
         return ''
 
     @property
     def whatsapp_2_url(self):
         if self.whatsapp_2:
             num = self.whatsapp_2.replace('+', '').replace(' ', '').replace('-', '')
-            return f'https://wa.me/{num}'
+            msg = (
+                f"Hola, te contacto a través de *PaPeExpress* 📦\n"
+                f"Vi tu negocio *{self.nombre}* en su red de socios.\n"
+                f"¿Me puedes dar más información?"
+            )
+            import urllib.parse
+            return f'https://wa.me/{num}?text={urllib.parse.quote(msg)}'
         return ''
 
     @property
