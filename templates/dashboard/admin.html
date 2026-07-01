@@ -22,6 +22,12 @@ nav.pe-navbar { display: none; }
     <p class="text-white-50 small px-2 mt-3 mb-2" style="font-size:.73rem;text-transform:uppercase;letter-spacing:.1em">Catálogo</p>
     <a href="/productos/" class="sidebar-nav-link"><i class="bi bi-grid-fill"></i>Productos</a>
     <a href="/admin/core/producto/" class="sidebar-nav-link"><i class="bi bi-plus-circle"></i>Gestionar Productos</a>
+    <p class="text-white-50 small px-2 mt-3 mb-2" style="font-size:.73rem;text-transform:uppercase;letter-spacing:.1em">POS</p>
+    <a href="/pos/sucursales/" class="sidebar-nav-link"><i class="bi bi-shop"></i>Sucursales</a>
+    <a href="/pos/admin-pos/" class="sidebar-nav-link"><i class="bi bi-graph-up"></i>Ventas POS</a>
+    <p class="text-white-50 small px-2 mt-3 mb-2" style="font-size:.73rem;text-transform:uppercase;letter-spacing:.1em">Clientes</p>
+    <a href="#cotizaciones" class="sidebar-nav-link"><i class="bi bi-clipboard-check"></i>Cotizaciones</a>
+    <a href="/admin/accounts/usuario/?verificado__exact=0" class="sidebar-nav-link"><i class="bi bi-shield-check"></i>Verificaciones</a>
     <p class="text-white-50 small px-2 mt-3 mb-2" style="font-size:.73rem;text-transform:uppercase;letter-spacing:.1em">Producción</p>
     <a href="/produccion/figuras/" class="sidebar-nav-link"><i class="bi bi-scissors"></i>Figuras Fomy</a>
     <p class="text-white-50 small px-2 mt-3 mb-2" style="font-size:.73rem;text-transform:uppercase;letter-spacing:.1em">Red</p>
@@ -88,7 +94,7 @@ nav.pe-navbar { display: none; }
     </div>
 
     <!-- Quick actions -->
-    <div class="card border-0 rounded-4 p-4">
+    <div class="card border-0 rounded-4 p-4 mb-4">
       <h6 class="fw-700 mb-3">Acciones rápidas</h6>
       <div class="row g-3">
         <div class="col-md-3">
@@ -113,6 +119,188 @@ nav.pe-navbar { display: none; }
         </div>
       </div>
     </div>
+
+    <!-- ── Cotizaciones pendientes ──────────────────────────── -->
+    <div id="cotizaciones" class="mb-4">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <h6 class="fw-700 mb-0">
+          <i class="bi bi-clipboard-check me-2 text-warning"></i>Cotizaciones pendientes
+          {% if cotizaciones_pendientes %}
+            <span class="badge rounded-pill ms-1" style="background:#ffc107;color:#000">{{ cotizaciones_pendientes|length }}</span>
+          {% endif %}
+        </h6>
+        <a href="/admin/cotizaciones/cotizacion/?estado__exact=pendiente" class="btn btn-sm btn-outline-dark rounded-pill">Ver en admin</a>
+      </div>
+
+      {% for cot in cotizaciones_pendientes %}
+      <div class="card border-0 rounded-4 p-4 mb-3" style="border-left: 4px solid #ffc107 !important; border-left-width: 4px;">
+        <div class="row g-3 align-items-start">
+
+          <!-- Info cliente -->
+          <div class="col-md-4">
+            <div class="fw-700 mb-1">#{{ cot.id }} — {{ cot.cliente.get_full_name|default:cot.cliente.username }}</div>
+            <div class="d-flex flex-column gap-1 small">
+              {% if cot.cliente.telefono %}
+              <span><i class="bi bi-telephone me-1 text-muted"></i>{{ cot.cliente.telefono }}</span>
+              {% endif %}
+              {% if cot.cliente.email %}
+              <span><i class="bi bi-envelope me-1 text-muted"></i>{{ cot.cliente.email }}</span>
+              {% endif %}
+              {% if cot.cliente.empresa %}
+              <span><i class="bi bi-building me-1 text-muted"></i>{{ cot.cliente.empresa }}</span>
+              {% endif %}
+            </div>
+            <div class="mt-2 d-flex gap-2 flex-wrap">
+              {% if cot.cliente.telefono %}
+              <a href="https://wa.me/52{{ cot.cliente.telefono|cut:' '|cut:'-'|cut:'+'|cut:'('|cut:')' }}?text=Hola%20{{ cot.cliente.first_name|default:cot.cliente.username }}%2C%20te%20contactamos%20de%20PaPeExpress%20respecto%20a%20tu%20cotizaci%C3%B3n%20%23{{ cot.id }}."
+                 target="_blank" class="btn btn-sm rounded-pill fw-700"
+                 style="background:#25D366;color:#fff">
+                <i class="bi bi-whatsapp me-1"></i>WhatsApp
+              </a>
+              {% endif %}
+              {% if cot.cliente.email %}
+              <a href="mailto:{{ cot.cliente.email }}?subject=Cotización%20%23{{ cot.id }}%20—%20PaPeExpress&body=Hola%20{{ cot.cliente.first_name|default:cot.cliente.username }}%2C%0A%0ATe%20contactamos%20respecto%20a%20tu%20cotizaci%C3%B3n%20%23{{ cot.id }}."
+                 class="btn btn-sm btn-outline-secondary rounded-pill">
+                <i class="bi bi-envelope me-1"></i>Email
+              </a>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Productos -->
+          <div class="col-md-4">
+            <div class="small fw-600 text-muted mb-1">Productos solicitados</div>
+            {% for d in cot.detalles.all %}
+            <div class="small">{{ d.cantidad }}× {{ d.producto.nombre }}</div>
+            {% endfor %}
+            <div class="mt-1 small text-muted">
+              ⚖️ {{ cot.peso_total }} kg &nbsp;·&nbsp; 💰 ${{ cot.total_estimado }}
+              &nbsp;·&nbsp; 🚚 {{ cot.get_metodo_envio_display }}
+            </div>
+            {% if cot.fecha_requerida %}
+            <div class="small text-danger mt-1"><i class="bi bi-calendar-event me-1"></i>Fecha requerida: {{ cot.fecha_requerida|date:"d/m/Y" }}</div>
+            {% endif %}
+            {% if cot.notas %}
+            <div class="small text-muted mt-1 fst-italic">"{{ cot.notas|truncatechars:80 }}"</div>
+            {% endif %}
+          </div>
+
+          <!-- Acciones -->
+          <div class="col-md-4">
+            <div class="small fw-600 text-muted mb-2">¿Tienes todo el stock?</div>
+
+            <!-- Confirmar disponibilidad -->
+            <form method="post" action="{% url 'gestionar_cotizacion' cot.pk %}" class="mb-2">
+              {% csrf_token %}
+              <input type="hidden" name="accion" value="confirmar">
+              <button type="submit" class="btn btn-sm w-100 rounded-pill fw-700"
+                      style="background:linear-gradient(135deg,#28a745,#20c997);color:#fff">
+                <i class="bi bi-check-circle me-1"></i>Sí, todo disponible → En proceso
+              </button>
+            </form>
+
+            <!-- Sin stock: poner fecha estimada -->
+            <form method="post" action="{% url 'gestionar_cotizacion' cot.pk %}" id="formSinStock{{ cot.pk }}">
+              {% csrf_token %}
+              <input type="hidden" name="accion" value="sin_stock">
+              <div class="input-group input-group-sm mb-1">
+                <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                <input type="date" name="fecha_estimada" class="form-control"
+                       placeholder="Fecha estimada" min="{{ cot.creado|date:'Y-m-d' }}">
+              </div>
+              <input type="text" name="notas_admin" class="form-control form-control-sm mb-1 rounded-3"
+                     placeholder="Nota para el cliente (opcional)">
+              <button type="submit" class="btn btn-sm w-100 rounded-pill fw-700 btn-outline-warning">
+                <i class="bi bi-clock me-1"></i>Faltan productos → Dar fecha estimada
+              </button>
+            </form>
+
+            <div class="text-muted small mt-2">
+              <i class="bi bi-clock-history me-1"></i>{{ cot.creado|date:"d/m/Y H:i" }}
+            </div>
+          </div>
+
+        </div>
+      </div>
+      {% empty %}
+      <div class="card border-0 rounded-4 p-4 text-center text-muted">
+        <i class="bi bi-check-circle-fill text-success fs-3"></i>
+        <div class="mt-2">No hay cotizaciones pendientes 🎉</div>
+      </div>
+      {% endfor %}
+
+      <!-- En proceso -->
+      {% if cotizaciones_procesando %}
+      <div class="d-flex align-items-center justify-content-between mt-4 mb-3">
+        <h6 class="fw-700 mb-0">
+          <i class="bi bi-hourglass-split me-2 text-primary"></i>En proceso
+          <span class="badge rounded-pill ms-1 bg-primary">{{ cotizaciones_procesando|length }}</span>
+        </h6>
+      </div>
+      {% for cot in cotizaciones_procesando %}
+      <div class="card border-0 rounded-4 p-3 mb-2 d-flex flex-row align-items-center gap-3 flex-wrap"
+           style="border-left: 4px solid #0d6efd !important;">
+        <div class="flex-grow-1">
+          <span class="fw-700">#{{ cot.id }}</span>
+          <span class="ms-2">{{ cot.cliente.get_full_name|default:cot.cliente.username }}</span>
+          <span class="text-muted ms-2 small">{{ cot.detalles.count }} producto(s) · ${{ cot.total_estimado }}</span>
+          {% if cot.fecha_requerida %}
+          <span class="text-primary small ms-2"><i class="bi bi-calendar me-1"></i>{{ cot.fecha_requerida|date:"d/m/Y" }}</span>
+          {% endif %}
+        </div>
+        <div class="d-flex gap-2">
+          {% if cot.cliente.telefono %}
+          <a href="https://wa.me/52{{ cot.cliente.telefono|cut:' '|cut:'-'|cut:'+'|cut:'('|cut:')' }}?text=Hola%20{{ cot.cliente.first_name|default:cot.cliente.username }}%2C%20tu%20pedido%20%23{{ cot.id }}%20está%20en%20proceso."
+             target="_blank" class="btn btn-sm rounded-pill fw-700" style="background:#25D366;color:#fff">
+            <i class="bi bi-whatsapp"></i>
+          </a>
+          {% endif %}
+          <form method="post" action="{% url 'gestionar_cotizacion' cot.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="completar">
+            <button type="submit" class="btn btn-sm btn-outline-success rounded-pill">
+              <i class="bi bi-check-lg me-1"></i>Completar
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+      {% endif %}
+
+      <!-- Verificaciones pendientes -->
+      {% if verificaciones_pendientes %}
+      <div class="d-flex align-items-center justify-content-between mt-4 mb-3">
+        <h6 class="fw-700 mb-0">
+          <i class="bi bi-shield-check me-2 text-warning"></i>Verificaciones pendientes
+          <span class="badge rounded-pill ms-1 bg-warning text-dark">{{ verificaciones_pendientes|length }}</span>
+        </h6>
+        <a href="/admin/accounts/usuario/?verificado__exact=0" class="btn btn-sm btn-outline-dark rounded-pill">Ver todas</a>
+      </div>
+      <div class="card border-0 rounded-4 p-3">
+        {% for u in verificaciones_pendientes %}
+        <div class="d-flex align-items-center gap-3 py-2 {% if not forloop.last %}border-bottom{% endif %}">
+          <img src="{{ u.foto_negocio.url }}" style="width:48px;height:48px;object-fit:cover;border-radius:10px" alt="">
+          <div class="flex-grow-1 small">
+            <div class="fw-700">{{ u.get_full_name|default:u.username }}</div>
+            <div class="text-muted">{{ u.email }} · {{ u.telefono|default:"sin tel" }}</div>
+          </div>
+          <div class="d-flex gap-2">
+            {% if u.telefono %}
+            <a href="https://wa.me/52{{ u.telefono|cut:' '|cut:'-'|cut:'+'|cut:'('|cut:')' }}"
+               target="_blank" class="btn btn-sm rounded-pill" style="background:#25D366;color:#fff">
+              <i class="bi bi-whatsapp"></i>
+            </a>
+            {% endif %}
+            <a href="/admin/accounts/usuario/{{ u.pk }}/change/" class="btn btn-sm btn-warning rounded-pill fw-700">
+              <i class="bi bi-person-check me-1"></i>Revisar
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
   </div>
 </div>
 {% endblock %}

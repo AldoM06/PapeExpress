@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'socios',
     'calculadora',
     'pos',
+    'cotizaciones',
 ]
 
 MIDDLEWARE = [
@@ -108,6 +109,8 @@ LOGOUT_REDIRECT_URL = '/'
 # ── Telegram ─────────────────────────────────────────────
 TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
 TELEGRAM_CHAT_ID   = config('TELEGRAM_CHAT_ID',   default='')
+# URL pública del sitio (para que Telegram pueda cargar las fotos de verificación)
+SITE_URL = config('SITE_URL', default='https://papeexpress.com')
 
 # ── Stripe ───────────────────────────────────────────────
 STRIPE_PUBLIC_KEY     = config('STRIPE_PUBLIC_KEY',     default='')

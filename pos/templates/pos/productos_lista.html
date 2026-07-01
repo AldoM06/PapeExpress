@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% block title %}Productos POS{% endblock %}
+
+{% block extra_css %}
+<style>
+.pos-hero { background: linear-gradient(135deg,#0d0d1e,#1a001e); padding: 7rem 0 3rem; color: #fff; }
+.prod-card { border: none; border-radius: 20px; box-shadow: 0 4px 24px rgba(0,0,0,.08); }
+.prod-thumb { width: 52px; height: 52px; object-fit: cover; border-radius: 10px; }
+.prod-thumb-placeholder { width: 52px; height: 52px; border-radius: 10px;
+  background: linear-gradient(135deg,#f8f0d4,#fff3cd);
+  display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
+.peso-badge { background: #e8f4fd; color: #0369a1; border-radius: 50px;
+  padding: .15rem .6rem; font-size: .75rem; font-weight: 600; }
+.sin-peso { background: #f1f5f9; color: #94a3b8; border-radius: 50px;
+  padding: .15rem .6rem; font-size: .75rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-hero">
+  <div class="container-fluid px-4">
+    <span class="section-label">POS</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.3rem;font-weight:900;">
+      <i class="bi bi-grid me-2"></i>Catálogo de Productos
+    </h1>
+  </div>
+</div>
+
+<section style="padding: 2rem 0; background: #f4f6f9; min-height: 60vh;">
+  <div class="container-fluid px-4">
+
+    <!-- Barra de acciones -->
+    <div class="d-flex flex-wrap gap-3 align-items-center justify-content-between mb-4">
+      <form method="get" class="d-flex gap-2">
+        <input name="q" value="{{ q }}" class="form-control rounded-pill" style="max-width:280px"
+               placeholder="🔍 Buscar por nombre o código…">
+        <button type="submit" class="btn rounded-pill fw-700 px-4"
+                style="background:linear-gradient(135deg,#0d0d1e,#1a001e);color:#fff">Buscar</button>
+        {% if q %}<a href="{% url 'pos_productos_lista' %}" class="btn btn-outline-secondary rounded-pill">Limpiar</a>{% endif %}
+      </form>
+      <a href="{% url 'pos_crear_producto' %}" class="btn rounded-pill fw-700 px-4"
+         style="background:linear-gradient(135deg,#c8a84b,#e8c96b);color:#fff">
+        <i class="bi bi-plus-lg me-2"></i>Nuevo producto
+      </a>
+    </div>
+
+    <div class="card prod-card">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead style="background:#0d0d1e;color:#fff;font-size:.82rem;">
+            <tr>
+              <th style="width:60px"></th>
+              <th>Nombre</th>
+              <th>Código</th>
+              <th>Categoría</th>
+              <th>Unidad</th>
+              <th>Peso</th>
+              <th class="text-center">Estado</th>
+              <th class="text-end">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in productos %}
+            <tr>
+              <td>
+                {% if p.imagen %}
+                  <img src="{{ p.imagen.url }}" class="prod-thumb" alt="{{ p.nombre }}">
+                {% else %}
+                  <div class="prod-thumb-placeholder">📦</div>
+                {% endif %}
+              </td>
+              <td class="fw-600">{{ p.nombre }}</td>
+              <td><code class="small">{{ p.codigo }}</code></td>
+              <td class="small text-muted">
+                {% if p.categoria %}{{ p.categoria.icono }} {{ p.categoria.nombre }}{% else %}—{% endif %}
+              </td>
+              <td class="small text-muted">{{ p.unidad }}</td>
+              <td>
+                {% if p.peso %}
+                  <span class="peso-badge">⚖️ {{ p.peso }} kg</span>
+                {% else %}
+                  <span class="sin-peso">Sin peso</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                {% if p.activo %}
+                  <span class="badge bg-success rounded-pill">Activo</span>
+                {% else %}
+                  <span class="badge bg-secondary rounded-pill">Inactivo</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <a href="{% url 'pos_editar_producto' p.pk %}"
+                   class="btn btn-sm btn-outline-dark rounded-pill">
+                  <i class="bi bi-pencil me-1"></i>Editar
+                </a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" class="text-center py-5 text-muted">
+                <div style="font-size:3rem">📦</div>
+                <div class="mt-2">No hay productos{% if q %} para "{{ q }}"{% endif %}.</div>
+                <a href="{% url 'pos_crear_producto' %}" class="btn btn-pe rounded-pill mt-3 px-4">
+                  <i class="bi bi-plus-lg me-2"></i>Agregar primer producto
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if productos %}
+      <div class="p-3 border-top d-flex justify-content-between align-items-center text-muted small">
+        <span>{{ productos|length }} producto(s) encontrado(s)</span>
+        <span>
+          {% with sin_peso=productos|length %}
+          {% endwith %}
+        </span>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</section>
+{% endblock %}

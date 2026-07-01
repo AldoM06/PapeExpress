@@ -1,0 +1,333 @@
+{% extends 'base.html' %}
+{% block title %}Mi Carrito{% endblock %}
+
+{% block extra_css %}
+<style>
+.carrito-hero { background: linear-gradient(135deg,#0a0e1a,#1a0a2e); padding: 8rem 0 3rem; color: #fff; }
+.carrito-card { border: none; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+.prod-thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 10px; }
+.prod-thumb-placeholder { width: 60px; height: 60px; border-radius: 10px; background: linear-gradient(135deg,#f8f0d4,#fff3cd); display:flex; align-items:center; justify-content:center; font-size: 1.4rem; }
+.qty-input { width: 70px; text-align: center; }
+.resumen-card { background: linear-gradient(135deg,#fff9ed,#fffbf2); border: 2px solid #c8a84b; border-radius: 20px; }
+.btn-cotizar { background: linear-gradient(135deg,#c8a84b,#e8c96b); color: #fff; border: none; border-radius: 50px; padding: .75rem 2rem; font-weight: 700; font-size: 1rem; }
+.btn-cotizar:hover { background: linear-gradient(135deg,#b8983b,#d8b95b); color: #fff; }
+.verificado-badge { background: #d4edda; color: #155724; border-radius: 50px; padding: .3rem .8rem; font-size: .85rem; font-weight: 600; }
+.no-verificado-badge { background: #fff3cd; color: #856404; border-radius: 50px; padding: .3rem .8rem; font-size: .85rem; font-weight: 600; }
+.envio-option { border: 2px solid #e0e0e0; border-radius: 14px; padding: 1rem; cursor: pointer; transition: .2s; }
+.envio-option:has(input:checked) { border-color: #c8a84b; background: #fffbf2; }
+.costo-envio-box { background: #e8f4fd; border-radius: 10px; padding: .7rem 1rem; font-size: .9rem; }
+.dir-section { display: none; }
+.dir-section.visible { display: block; }
+.total-final { background: linear-gradient(135deg,#0a0e1a,#1a0a2e); color: #fff; border-radius: 14px; padding: 1rem 1.2rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="carrito-hero">
+  <div class="container">
+    <span class="section-label">Mi carrito</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;color:#fff">
+      <i class="bi bi-cart3 me-3"></i>Carrito de Cotización
+    </h1>
+  </div>
+</div>
+
+<section style="padding: 3rem 0; background: #f8f9fa; min-height: 60vh;">
+  <div class="container">
+    {% if items %}
+    <div class="row g-4">
+
+      <!-- Lista de productos -->
+      <div class="col-lg-8">
+        <div class="card carrito-card p-4 mb-4">
+          <h5 class="fw-700 mb-4"><i class="bi bi-box-seam me-2 text-pe"></i>Productos ({{ cantidad_total }} pzas)</h5>
+
+          {% for producto, cantidad in items %}
+          <div class="d-flex align-items-center gap-3 py-3 {% if not forloop.last %}border-bottom{% endif %}">
+            {% if producto.imagen %}
+              <img src="{{ producto.imagen.url }}" class="prod-thumb" alt="{{ producto.nombre }}">
+            {% else %}
+              <div class="prod-thumb-placeholder">
+                {% if producto.categoria and producto.categoria.tipo == 'fabricado' %}🎨{% else %}<i class="bi bi-box-seam"></i>{% endif %}
+              </div>
+            {% endif %}
+            <div class="flex-grow-1">
+              <div class="fw-600">{{ producto.nombre }}</div>
+              {% if producto.categoria %}<small class="text-muted">{{ producto.categoria.nombre }}</small>{% endif %}
+              <div class="d-flex gap-3 mt-1 small text-muted">
+                {% if producto.precio %}<span>💰 ${{ producto.precio }} c/u</span>{% endif %}
+                <span>⚖️ {{ producto.peso }} kg c/u</span>
+              </div>
+            </div>
+            <form method="post" action="{% url 'actualizar_cantidad' producto.id %}" class="d-flex align-items-center gap-2">
+              {% csrf_token %}
+              <input type="number" name="cantidad" value="{{ cantidad }}" min="1" class="form-control qty-input form-control-sm">
+              <button type="submit" class="btn btn-outline-secondary btn-sm rounded-pill"><i class="bi bi-arrow-clockwise"></i></button>
+            </form>
+            <div class="text-end" style="min-width:70px">
+              {% if producto.precio %}<div class="fw-700 text-pe">${{ producto.precio|floatformat:2 }}</div>{% endif %}
+              <small class="text-muted">{{ producto.peso|floatformat:3 }} kg</small>
+            </div>
+            <form method="post" action="{% url 'quitar_producto' producto.id %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill" title="Quitar"><i class="bi bi-trash"></i></button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Sección de envío -->
+        <div class="card carrito-card p-4">
+          <h5 class="fw-700 mb-4"><i class="bi bi-truck me-2"></i>Opciones de envío</h5>
+
+          <div id="envioOpciones">
+            <!-- PapeExpress -->
+            <label class="envio-option d-block mb-3">
+              <div class="d-flex align-items-start gap-3">
+                <input type="radio" name="metodo_envio_sel" value="papeexpress" checked class="mt-1 envio-radio" style="accent-color:#c8a84b">
+                <div>
+                  <div class="fw-700">🚚 Envío PapeExpress</div>
+                  <small class="text-muted">CDMX y Estado de México</small>
+                  <div class="costo-envio-box mt-2">
+                    {% if tarifa_especial %}
+                      <i class="bi bi-star-fill me-1 text-warning"></i>
+                      <strong>Tarifa preferencial exclusiva</strong><br>
+                      <span class="text-muted">Costo fijo de envío:
+                        <strong id="costoEnvioDisplay" class="text-success">${{ costo_envio_pe|floatformat:2 }}</strong>
+                        sin importar el peso.
+                      </span>
+                    {% else %}
+                      <i class="bi bi-info-circle me-1 text-primary"></i>
+                      <strong>${{ tarifa.precio_base }}</strong> base hasta <strong>{{ tarifa.peso_base_kg }} kg</strong>
+                      — después <strong>${{ tarifa.precio_kg_extra }}/kg</strong> adicional.<br>
+                      <span class="text-muted">Tu pedido pesa <strong>{{ peso_total|floatformat:3 }} kg</strong>
+                      → costo estimado: <strong id="costoEnvioDisplay">${{ costo_envio_pe|floatformat:2 }}</strong></span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </label>
+
+            <!-- Paquetería -->
+            <label class="envio-option d-block mb-3">
+              <div class="d-flex align-items-start gap-3">
+                <input type="radio" name="metodo_envio_sel" value="paqueteria" class="mt-1 envio-radio" style="accent-color:#c8a84b">
+                <div>
+                  <div class="fw-700">📦 Paquetería (FedEx, DHL, etc.)</div>
+                  <small class="text-muted">Cotizamos el envío según destino y te informamos.</small>
+                </div>
+              </div>
+            </label>
+
+            <!-- Recoger -->
+            <label class="envio-option d-block mb-3">
+              <div class="d-flex align-items-start gap-3">
+                <input type="radio" name="metodo_envio_sel" value="recoger" class="mt-1 envio-radio" style="accent-color:#c8a84b">
+                <div>
+                  <div class="fw-700">🏪 Recoger en tienda</div>
+                  <small class="text-muted">Sin costo de envío. Te avisamos cuando esté listo.</small>
+                </div>
+              </div>
+            </label>
+          </div>
+
+          <!-- Dirección (visible si no es "recoger") -->
+          <div id="seccionDireccion" class="dir-section visible mt-2">
+            <hr>
+            <h6 class="fw-700 mb-3"><i class="bi bi-geo-alt me-2"></i>Dirección de entrega</h6>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label small fw-600">Calle y número <span class="text-danger">*</span></label>
+                <input type="text" id="dir_calle" class="form-control rounded-3"
+                       placeholder="Ej: Av. Insurgentes 1234 int 5"
+                       value="{{ dir_default.calle }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-600">Colonia</label>
+                <input type="text" id="dir_colonia" class="form-control rounded-3"
+                       placeholder="Colonia" value="{{ dir_default.colonia }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-600">Ciudad / Municipio</label>
+                <input type="text" id="dir_ciudad" class="form-control rounded-3"
+                       placeholder="Ciudad" value="{{ dir_default.ciudad }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-600">Estado</label>
+                <input type="text" id="dir_estado" class="form-control rounded-3"
+                       placeholder="Estado" value="{{ dir_default.estado }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-600">Código postal</label>
+                <input type="text" id="dir_cp" class="form-control rounded-3"
+                       placeholder="CP" value="{{ dir_default.cp }}" maxlength="10">
+              </div>
+              <div class="col-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="guardarDir" value="1">
+                  <label class="form-check-label small" for="guardarDir">
+                    Guardar como mi dirección predeterminada
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <hr>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label small fw-600">Fecha requerida <span class="text-muted fw-400">(opcional)</span></label>
+                <input type="date" id="fecha_requerida" class="form-control rounded-3">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-600">Notas de entrega</label>
+                <input type="text" id="notas_entrega" class="form-control rounded-3"
+                       placeholder="Ej: dejar con el portero, llamar antes…">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <a href="/productos/" class="btn btn-outline-dark rounded-pill mt-3">
+          <i class="bi bi-arrow-left me-2"></i>Seguir agregando productos
+        </a>
+      </div>
+
+      <!-- Resumen y envío -->
+      <div class="col-lg-4">
+        <div class="resumen-card p-4">
+          <h5 class="fw-700 mb-3"><i class="bi bi-clipboard-check me-2"></i>Resumen</h5>
+
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted">Total de piezas</span>
+            <span class="fw-600">{{ cantidad_total }}</span>
+          </div>
+          {% if subtotal %}
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted">Subtotal estimado</span>
+            <span class="fw-600">${{ subtotal|floatformat:2 }}</span>
+          </div>
+          {% endif %}
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted">⚖️ Peso total</span>
+            <span class="fw-600">{{ peso_total|floatformat:3 }} kg</span>
+          </div>
+          <div class="d-flex justify-content-between mb-3" id="filaEnvioResumen">
+            <span class="text-muted">🚚 Envío estimado</span>
+            <span class="fw-600" id="costoEnvioResumen">${{ costo_envio_pe|floatformat:2 }}</span>
+          </div>
+
+          <div class="total-final mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-700">Total estimado</span>
+              <span class="fw-900 fs-5" id="totalFinal">
+                ${{ subtotal|floatformat:2 }}
+              </span>
+            </div>
+            <small style="color:rgba(255,255,255,.5)">Precio final confirmado por nuestro equipo.</small>
+          </div>
+
+          <!-- Estado de verificación -->
+          <div class="mb-3">
+            {% if verificado %}
+              <span class="verificado-badge"><i class="bi bi-patch-check-fill me-1"></i>Negocio verificado</span>
+            {% elif request.user.foto_negocio %}
+              <span class="no-verificado-badge"><i class="bi bi-hourglass-split me-1"></i>Verificación pendiente</span>
+            {% else %}
+              <span class="no-verificado-badge"><i class="bi bi-exclamation-triangle me-1"></i>Se requiere verificación</span>
+            {% endif %}
+          </div>
+
+          <!-- Formulario de envío (hidden inputs se llenan con JS) -->
+          <form method="post" action="{% url 'enviar_cotizacion' %}" id="formCotizacion">
+            {% csrf_token %}
+            <input type="hidden" name="metodo_envio"     id="h_metodo">
+            <input type="hidden" name="dir_calle"        id="h_calle">
+            <input type="hidden" name="dir_colonia"      id="h_colonia">
+            <input type="hidden" name="dir_ciudad"       id="h_ciudad">
+            <input type="hidden" name="dir_estado"       id="h_estado">
+            <input type="hidden" name="dir_cp"           id="h_cp">
+            <input type="hidden" name="fecha_requerida"  id="h_fecha">
+            <input type="hidden" name="notas_entrega"    id="h_notas_entrega">
+            <input type="hidden" name="guardar_direccion" id="h_guardar">
+
+            <div class="mb-3">
+              <label class="form-label fw-600 small">Notas generales <span class="text-muted fw-400">(opcional)</span></label>
+              <textarea name="notas" rows="2" class="form-control" placeholder="Colores, cantidades especiales, urgencia…"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-cotizar w-100" id="btnEnviar">
+              <i class="bi bi-send-fill me-2"></i>Enviar Cotización
+            </button>
+          </form>
+
+          <p class="text-muted small mt-2 mb-0 text-center">
+            Te contactaremos para confirmar precios y disponibilidad.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {% else %}
+    <div class="text-center py-5">
+      <div style="font-size:5rem">🛒</div>
+      <h4 class="mt-3 text-muted">Tu carrito está vacío</h4>
+      <p class="text-muted">Agrega productos del catálogo para armar tu cotización.</p>
+      <a href="/productos/" class="btn btn-pe rounded-pill mt-2 px-4">
+        <i class="bi bi-grid me-2"></i>Ver productos
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const subtotal     = {{ subtotal|default:0 }};
+const costoBase    = {{ costo_envio_pe|default:0 }};
+const radios       = document.querySelectorAll('.envio-radio');
+const secDir       = document.getElementById('seccionDireccion');
+const filEnvio     = document.getElementById('filaEnvioResumen');
+const costoResumen = document.getElementById('costoEnvioResumen');
+const totalFinal   = document.getElementById('totalFinal');
+
+function actualizarResumen() {
+  const metodo = document.querySelector('.envio-radio:checked')?.value || 'papeexpress';
+  let costo = 0;
+
+  if (metodo === 'papeexpress') {
+    costo = costoBase;
+    secDir.classList.add('visible');
+    filEnvio.style.display = '';
+    costoResumen.textContent = '$' + costo.toFixed(2);
+  } else if (metodo === 'paqueteria') {
+    costo = 0;
+    secDir.classList.add('visible');
+    filEnvio.style.display = '';
+    costoResumen.textContent = 'A cotizar';
+  } else {
+    costo = 0;
+    secDir.classList.remove('visible');
+    filEnvio.style.display = 'none';
+  }
+
+  totalFinal.textContent = '$' + (subtotal + costo).toFixed(2);
+}
+
+radios.forEach(r => r.addEventListener('change', actualizarResumen));
+actualizarResumen();
+
+// Llenar hidden inputs antes de enviar
+document.getElementById('formCotizacion').addEventListener('submit', function() {
+  document.getElementById('h_metodo').value        = document.querySelector('.envio-radio:checked')?.value || 'papeexpress';
+  document.getElementById('h_calle').value         = document.getElementById('dir_calle')?.value || '';
+  document.getElementById('h_colonia').value       = document.getElementById('dir_colonia')?.value || '';
+  document.getElementById('h_ciudad').value        = document.getElementById('dir_ciudad')?.value || '';
+  document.getElementById('h_estado').value        = document.getElementById('dir_estado')?.value || '';
+  document.getElementById('h_cp').value            = document.getElementById('dir_cp')?.value || '';
+  document.getElementById('h_fecha').value         = document.getElementById('fecha_requerida')?.value || '';
+  document.getElementById('h_notas_entrega').value = document.getElementById('notas_entrega')?.value || '';
+  document.getElementById('h_guardar').value       = document.getElementById('guardarDir')?.checked ? '1' : '0';
+});
+</script>
+{% endblock %}

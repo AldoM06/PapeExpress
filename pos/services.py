@@ -28,6 +28,18 @@ def crear_venta(sucursal, cajero, items, forma_pago='efectivo',
     items = [{'producto': obj, 'cantidad': 2, 'precio': 15.00,
                'costo': 8.00, 'nivel': 1, 'descuento': 0}, ...]
     """
+    # Validar stock disponible antes de crear nada
+    for item in items:
+        prod     = item['producto']
+        cantidad = Decimal(str(item['cantidad']))
+        inv = Inventario.objects.filter(producto=prod, sucursal=sucursal).first()
+        stock_disponible = inv.stock_actual if inv else Decimal('0')
+        if stock_disponible < cantidad:
+            raise ValueError(
+                f'Stock insuficiente para "{prod.nombre}": '
+                f'disponible {stock_disponible} {prod.unidad}, solicitado {cantidad}.'
+            )
+
     venta = Venta.objects.create(
         sucursal=sucursal,
         cajero=cajero,
@@ -200,37 +212,38 @@ def analizar_ticket_ia(imagen_path: str = None, texto_ticket: str = None) -> dic
     else:
         return {'error': 'Se requiere imagen o texto del ticket'}
 
-    try:
-        data = json.dumps({
-            'model': 'claude-sonnet-4-6',
-            'max_tokens': 1000,
-            'messages': messages,
-        }).encode()
+    import requests as req_lib
 
-        req = urllib.request.Request(
-            'https://api.anthropic.com/v1/messages',
-            data=data,
-            headers={
-                'Content-Type': 'application/json',
-                'x-api-key': api_key,
-                'anthropic-version': '2023-06-01',
-            },
-            method='POST'
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            result = json.loads(resp.read())
+    modelo = getattr(__import__('django.conf', fromlist=['settings']).settings,
+                     'ANTHROPIC_MODEL', 'claude-sonnet-4-6')
+    payload = {'model': modelo, 'max_tokens': 1000, 'messages': messages}
+    headers = {
+        'Content-Type': 'application/json',
+        'x-api-key': api_key,
+        'anthropic-version': '2023-06-01',
+    }
 
-        texto = result['content'][0]['text'].strip()
-        # Limpiar posibles ```json fences
-        if texto.startswith('```'):
-            texto = texto.split('```')[1]
-            if texto.startswith('json'):
-                texto = texto[4:]
-        return json.loads(texto.strip())
+    ultimo_error = None
+    for intento in range(1, 3):  # 2 intentos
+        try:
+            resp = req_lib.post(
+                'https://api.anthropic.com/v1/messages',
+                json=payload, headers=headers, timeout=30,
+            )
+            resp.raise_for_status()
+            result = resp.json()
+            texto = result['content'][0]['text'].strip()
+            if texto.startswith('```'):
+                texto = texto.split('```')[1]
+                if texto.startswith('json'):
+                    texto = texto[4:]
+            return json.loads(texto.strip())
+        except Exception as e:
+            ultimo_error = e
+            logger.warning(f'analizar_ticket_ia intento {intento} falló: {e}')
 
-    except Exception as e:
-        logger.error(f'Error analizando ticket: {e}')
-        return {'error': str(e)}
+    logger.error(f'Error analizando ticket tras 2 intentos: {ultimo_error}')
+    return {'error': str(ultimo_error)}
 
 
 # ── COMPARACIÓN DE PRECIOS PROVEEDORES ────────────────────

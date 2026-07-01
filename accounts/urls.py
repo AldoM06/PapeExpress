@@ -12,4 +12,5 @@ urlpatterns = [
     path('dashboard/ventas/', views.dashboard_ventas, name='dashboard_ventas'),
     path('dashboard/almacen/', views.dashboard_almacen, name='dashboard_almacen'),
     path('dashboard/produccion/', views.dashboard_produccion, name='dashboard_produccion'),
+    path('cotizacion/<int:pk>/gestionar/', views.gestionar_cotizacion, name='gestionar_cotizacion'),
 ]

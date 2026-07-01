@@ -53,9 +53,10 @@ class Sucursal(models.Model):
 class UsuarioSucursal(models.Model):
     """Relación usuario ↔ sucursal con rol dentro del POS."""
     ROL_CHOICES = [
-        ('cajero',   'Cajero'),
-        ('gerente',  'Gerente de sucursal'),
-        ('almacen',  'Encargado de almacén'),
+        ('cajero',    'Cajero'),
+        ('vendedor',  'Vendedor'),
+        ('gerente',   'Gerente de sucursal'),
+        ('almacen',   'Encargado de almacén'),
     ]
     usuario     = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
                                     related_name='sucursales_pos')
@@ -100,6 +101,8 @@ class ProductoPOS(models.Model):
     imagen      = models.ImageField(upload_to='pos/productos/', blank=True, null=True)
     unidad      = models.CharField(max_length=30, default='pieza',
                                    help_text='pieza, caja, kg, litro, etc.')
+    peso        = models.DecimalField('Peso (kg)', max_digits=6, decimal_places=3, default=0,
+                                      help_text='Peso por unidad en kg. Usado para calcular envíos.')
     activo      = models.BooleanField(default=True)
     creado      = models.DateTimeField(auto_now_add=True)
 

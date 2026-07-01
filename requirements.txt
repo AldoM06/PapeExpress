@@ -11,3 +11,4 @@ stripe>=7.0
 python-decouple>=3.8
 apscheduler>=3.10
 anthropic>=0.25
+requests>=2.31

@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+{% block title %}Ingresos del día{% endblock %}
+
+{% block extra_css %}
+<style>
+.pos-hero { background: linear-gradient(135deg,#0d0d1e,#1a001e); padding: 7rem 0 3rem; color: #fff; }
+.kpi { border: none; border-radius: 16px; padding: 1.2rem 1.5rem; }
+.kpi-num { font-size: 1.8rem; font-weight: 900; line-height: 1.1; }
+.kpi-total    { background: linear-gradient(135deg,#FF0080,#FF1744); color:#fff; }
+.kpi-ganancia { background: linear-gradient(135deg,#00A846,#00C853); color:#fff; }
+.kpi-costo    { background: linear-gradient(135deg,#555,#888); color:#fff; }
+.kpi-num-tx   { background: linear-gradient(135deg,#c8a84b,#e8c96b); color:#fff; }
+.sec-card  { border: none; border-radius: 18px; box-shadow: 0 4px 20px rgba(0,0,0,.07); }
+.ticket-row { cursor: pointer; transition: .15s; }
+.ticket-row:hover { background: #f0f4ff; }
+.ticket-row.open  { background: #f8f9fa; }
+.detalle-row { background: #fdfdfd; font-size: .83rem; }
+.forma-badge { border-radius: 50px; padding: .2rem .7rem; font-size: .75rem; font-weight: 700; }
+.forma-efectivo     { background: #d4edda; color: #155724; }
+.forma-tarjeta      { background: #cce5ff; color: #004085; }
+.forma-transferencia{ background: #fff3cd; color: #856404; }
+.forma-credito      { background: #f8d7da; color: #721c24; }
+.forma-mixto        { background: #e2d9f3; color: #432874; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-hero">
+  <div class="container-fluid px-4">
+    <span class="section-label">POS</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.3rem;font-weight:900;">
+      <i class="bi bi-cash-stack me-2"></i>Ingresos del día
+    </h1>
+    <p style="color:rgba(255,255,255,.65)">{{ fecha|date:"l d/m/Y" }}{% if sucursal %} — {{ sucursal.nombre }}{% endif %}</p>
+  </div>
+</div>
+
+<section style="padding:2rem 0;background:#f4f6f9;min-height:60vh;">
+<div class="container-fluid px-4">
+
+  <!-- Filtros -->
+  <div class="card sec-card p-3 mb-4">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-6 col-md-2">
+        <label class="form-label small fw-600 mb-1">Fecha</label>
+        <input type="date" name="fecha" value="{{ fecha|date:'Y-m-d' }}" class="form-control rounded-3">
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label small fw-600 mb-1">Folio / ticket</label>
+        <input type="text" name="folio" value="{{ folio_q }}" class="form-control rounded-3" placeholder="Buscar folio…">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small fw-600 mb-1">Forma de pago</label>
+        <select name="forma_pago" class="form-select rounded-3">
+          <option value="">Todas</option>
+          {% for val, label in formas_pago %}
+          <option value="{{ val }}" {% if forma_q == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if sucursales %}
+      <div class="col-6 col-md-2">
+        <label class="form-label small fw-600 mb-1">Sucursal</label>
+        <select name="sucursal" class="form-select rounded-3">
+          <option value="">Todas</option>
+          {% for s in sucursales %}
+          <option value="{{ s.id }}" {% if sucursal and sucursal.id == s.id %}selected{% endif %}>{{ s.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="col-12 col-md-2">
+        <button type="submit" class="btn w-100 rounded-pill fw-700"
+                style="background:linear-gradient(135deg,#0d0d1e,#1a2a4a);color:#fff">
+          <i class="bi bi-search me-1"></i>Filtrar
+        </button>
+      </div>
+      <div class="col-12 col-md-1">
+        <a href="{% url 'pos_ingresos' %}" class="btn btn-outline-secondary w-100 rounded-pill">Limpiar</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- KPIs -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="kpi kpi-total">
+        <div class="small opacity-80 fw-600">Total vendido</div>
+        <div class="kpi-num">${{ total_ventas|floatformat:2 }}</div>
+        <div class="small opacity-70">{{ ventas|length }} transacciones</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi kpi-ganancia">
+        <div class="small opacity-80 fw-600">Ganancia del día</div>
+        <div class="kpi-num">${{ ganancia_dia|floatformat:2 }}</div>
+        {% if total_ventas %}<div class="small opacity-70">{% widthratio ganancia_dia total_ventas 100 %}% margen</div>{% endif %}
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi kpi-costo">
+        <div class="small opacity-80 fw-600">Costo de mercancía</div>
+        <div class="kpi-num">${{ total_costo|floatformat:2 }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi kpi-num-tx">
+        <div class="small opacity-80 fw-600">Descuentos</div>
+        <div class="kpi-num">${{ total_descuentos|floatformat:2 }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Tabla de tickets -->
+    <div class="col-lg-9">
+      <div class="card sec-card overflow-hidden">
+        <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+          <h6 class="fw-700 mb-0"><i class="bi bi-receipt me-2"></i>Tickets del día</h6>
+          <span class="text-muted small">{{ ventas|length }} resultado(s)</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table mb-0" style="font-size:.85rem">
+            <thead style="background:#0d0d1e;color:#fff">
+              <tr>
+                <th style="width:30px"></th>
+                <th>Folio</th>
+                <th>Sucursal</th>
+                <th>Cajero</th>
+                <th>Forma pago</th>
+                <th class="text-end">Descuento</th>
+                <th class="text-end">Total</th>
+                <th class="text-end">Ganancia</th>
+                <th>Hora</th>
+              </tr>
+            </thead>
+            <tbody id="tablaVentas">
+              {% for v in ventas %}
+              <tr class="ticket-row" onclick="toggleDetalle({{ v.id }})">
+                <td class="text-center text-muted"><i class="bi bi-chevron-right" id="ico-{{ v.id }}"></i></td>
+                <td class="fw-700">{{ v.folio }}</td>
+                <td class="text-muted small">{{ v.sucursal.nombre }}</td>
+                <td class="text-muted">{{ v.cajero.username|default:"—" }}</td>
+                <td>
+                  <span class="forma-badge forma-{{ v.forma_pago }}">{{ v.get_forma_pago_display }}</span>
+                </td>
+                <td class="text-end text-muted">${{ v.descuento|floatformat:2 }}</td>
+                <td class="text-end fw-700 text-success">${{ v.total|floatformat:2 }}</td>
+                <td class="text-end fw-600" style="color:#00A846">${{ v.ganancia|floatformat:2 }}</td>
+                <td class="text-muted small">{{ v.creado|date:"H:i" }}</td>
+              </tr>
+              <!-- Detalle expandible -->
+              <tr id="det-{{ v.id }}" class="detalle-row d-none">
+                <td colspan="9" class="px-4 py-2">
+                  <div class="small fw-600 text-muted mb-2">Productos del ticket:</div>
+                  <table class="table table-sm mb-0" style="font-size:.8rem">
+                    <thead class="table-light">
+                      <tr><th>Producto</th><th class="text-end">Cant.</th><th class="text-end">Precio</th><th class="text-end">Subtotal</th></tr>
+                    </thead>
+                    <tbody>
+                      {% for d in v.detalles.all %}
+                      <tr>
+                        <td>{{ d.producto.nombre }}</td>
+                        <td class="text-end">{{ d.cantidad }}</td>
+                        <td class="text-end">${{ d.precio_unitario|floatformat:2 }}</td>
+                        <td class="text-end fw-600">${{ d.subtotal|floatformat:2 }}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                  {% if v.notas %}<div class="small text-muted mt-1"><i class="bi bi-chat-left-text me-1"></i>{{ v.notas }}</div>{% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="9" class="text-center py-5 text-muted">
+                <i class="bi bi-inbox" style="font-size:2rem"></i>
+                <div class="mt-2">No hay ventas para los filtros seleccionados.</div>
+              </td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desglose por forma de pago -->
+    <div class="col-lg-3">
+      <div class="card sec-card p-4 mb-3">
+        <h6 class="fw-700 mb-3"><i class="bi bi-pie-chart me-2"></i>Por forma de pago</h6>
+        {% for fp in por_forma %}
+        <div class="d-flex justify-content-between align-items-center py-2 {% if not forloop.last %}border-bottom{% endif %}">
+          <div>
+            <span class="forma-badge forma-{{ fp.forma_pago }}">{{ fp.forma_pago }}</span>
+            <div class="small text-muted mt-1">{{ fp.num }} venta(s)</div>
+          </div>
+          <div class="fw-700 text-success">${{ fp.subtotal|floatformat:2 }}</div>
+        </div>
+        {% empty %}
+        <div class="text-muted small text-center">Sin datos</div>
+        {% endfor %}
+      </div>
+
+      <div class="card sec-card p-4">
+        <h6 class="fw-700 mb-3"><i class="bi bi-lightning-fill text-warning me-2"></i>Accesos rápidos</h6>
+        <div class="d-flex flex-column gap-2">
+          <a href="/pos/" class="btn btn-outline-dark rounded-pill btn-sm fw-600">
+            <i class="bi bi-cash-coin me-1"></i>Ir al POS
+          </a>
+          <a href="/pos/creditos/" class="btn btn-outline-dark rounded-pill btn-sm fw-600">
+            <i class="bi bi-credit-card me-1"></i>Créditos pendientes
+          </a>
+          <a href="/pos/admin-pos/" class="btn btn-outline-dark rounded-pill btn-sm fw-600">
+            <i class="bi bi-graph-up me-1"></i>Dashboard ventas
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleDetalle(id) {
+  const row = document.getElementById('det-' + id);
+  const ico = document.getElementById('ico-' + id);
+  const isOpen = !row.classList.contains('d-none');
+  row.classList.toggle('d-none', isOpen);
+  ico.className = isOpen ? 'bi bi-chevron-right' : 'bi bi-chevron-down text-primary';
+}
+</script>
+{% endblock %}

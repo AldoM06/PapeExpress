@@ -21,19 +21,26 @@ class Categoria(models.Model):
 
 
 class Producto(models.Model):
-    categoria = models.ForeignKey(Categoria, on_delete=models.SET_NULL, null=True, blank=True, related_name='productos')
-    nombre = models.CharField(max_length=200)
-    descripcion = models.TextField(blank=True)
-    imagen = models.ImageField(upload_to='productos/', blank=True, null=True)
-    precio = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    precio_mayoreo = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    disponible = models.BooleanField(default=True)
-    mostrar_en_portada = models.BooleanField(default=False, verbose_name='Mostrar en portada',
-                                              help_text='Activa para que aparezca en la página de inicio')
-    destacado = models.BooleanField(default=False)
-    orden = models.PositiveIntegerField(default=0)
-    creado = models.DateTimeField(auto_now_add=True)
-    actualizado = models.DateTimeField(auto_now=True)
+    categoria      = models.ForeignKey(Categoria, on_delete=models.SET_NULL, null=True, blank=True, related_name='productos')
+    nombre         = models.CharField(max_length=200)
+    descripcion    = models.TextField(blank=True)
+    imagen         = models.ImageField(upload_to='productos/', blank=True, null=True)
+    precio         = models.DecimalField('Precio menudeo', max_digits=10, decimal_places=2, null=True, blank=True)
+    precio_mayoreo = models.DecimalField('Precio mayoreo', max_digits=10, decimal_places=2, null=True, blank=True)
+    peso           = models.DecimalField('Peso (kg)', max_digits=6, decimal_places=3, default=0)
+    # Detalles del producto
+    marca          = models.CharField('Marca', max_length=100, blank=True)
+    piezas_por_caja = models.PositiveIntegerField('Piezas por caja/paquete', null=True, blank=True,
+                       help_text='Cuántas piezas trae la presentación de mayoreo')
+    contenido      = models.CharField('Contenido / presentación', max_length=200, blank=True,
+                       help_text='Ej: Caja con 12 pzas, Bolsa 100 hojas, Paquete x 6')
+    sku            = models.CharField('SKU / Código', max_length=100, blank=True)
+    disponible     = models.BooleanField(default=True)
+    mostrar_en_portada = models.BooleanField(default=False, verbose_name='Mostrar en portada')
+    destacado      = models.BooleanField(default=False)
+    orden          = models.PositiveIntegerField(default=0)
+    creado         = models.DateTimeField(auto_now_add=True)
+    actualizado    = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'Producto'
@@ -42,6 +49,21 @@ class Producto(models.Model):
 
     def __str__(self):
         return self.nombre
+
+
+class FotoProducto(models.Model):
+    """Fotos adicionales de un producto (galería)."""
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='fotos')
+    imagen   = models.ImageField(upload_to='productos/galeria/')
+    orden    = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['orden']
+        verbose_name = 'Foto de producto'
+        verbose_name_plural = 'Fotos de producto'
+
+    def __str__(self):
+        return f'Foto {self.orden} — {self.producto.nombre}'
 
 
 class MensajeContacto(models.Model):

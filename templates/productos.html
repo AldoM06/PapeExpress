@@ -71,15 +71,35 @@
           {% endif %}
           <div class="card-body">
             {% if p.categoria %}<small class="text-muted d-block mb-1">{{ p.categoria.nombre }}</small>{% endif %}
-            <h6 class="card-title fw-700 mb-1">{{ p.nombre }}</h6>
-            {% if p.descripcion %}<p class="card-text small text-muted">{{ p.descripcion|truncatechars:80 }}</p>{% endif %}
-            {% if p.precio %}
-            <div class="d-flex align-items-center gap-2 mt-2">
-              <span class="fw-700 text-pe fs-6">${{ p.precio }}</span>
-              {% if p.precio_mayoreo %}<small class="text-muted">Mayoreo: ${{ p.precio_mayoreo }}</small>{% endif %}
+            <h6 class="card-title fw-700 mb-1">
+              <a href="{% url 'producto_detalle' p.pk %}" class="text-decoration-none text-dark stretched-link">{{ p.nombre }}</a>
+            </h6>
+            {% if p.marca %}<small class="text-muted d-block">{{ p.marca }}</small>{% endif %}
+            {% if p.descripcion %}<p class="card-text small text-muted">{{ p.descripcion|truncatechars:70 }}</p>{% endif %}
+            <div class="d-flex align-items-center gap-2 mt-2 flex-wrap">
+              {% if es_mayoreo and p.precio_mayoreo %}
+                <span class="fw-700 fs-6" style="color:#16a34a">${{ p.precio_mayoreo }}</span>
+                <small class="badge" style="background:#d4edda;color:#155724;border-radius:50px">Mayoreo</small>
+              {% elif p.precio %}
+                <span class="fw-700 text-pe fs-6">${{ p.precio }}</span>
+              {% endif %}
             </div>
-            {% endif %}
+            {% if p.peso %}<small class="text-muted d-block mt-1"><i class="bi bi-box me-1"></i>{{ p.peso }} kg</small>{% endif %}
           </div>
+          {% if user.is_authenticated and user.rol == 'cliente' %}
+          <div class="card-footer bg-transparent border-0 pt-0 pb-3 px-3">
+            <form method="post" action="/cotizaciones/agregar/{{ p.id }}/" class="agregar-form">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.path }}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
+              <div class="input-group input-group-sm">
+                <input type="number" name="cantidad" value="1" min="1" class="form-control" style="max-width:60px">
+                <button type="submit" class="btn btn-pe btn-sm flex-grow-1">
+                  <i class="bi bi-cart-plus me-1"></i>Agregar
+                </button>
+              </div>
+            </form>
+          </div>
+          {% endif %}
         </div>
       </div>
       {% endfor %}

@@ -1,0 +1,294 @@
+{% extends 'base.html' %}
+{% block title %}Entrada de Mercancía{% endblock %}
+
+{% block extra_css %}
+<style>
+.pos-hero { background: linear-gradient(135deg,#0d0d1e,#1a001e); padding: 7rem 0 3rem; color: #fff; }
+.card-form { border: none; border-radius: 20px; box-shadow: 0 4px 24px rgba(0,0,0,.10); }
+.prod-search-wrap { position: relative; }
+.prod-resultados { position: absolute; z-index: 200; width: 100%; background: #fff;
+  border: 1px solid #ddd; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  max-height: 260px; overflow-y: auto; display: none; }
+.prod-item { padding: .6rem 1rem; cursor: pointer; border-bottom: 1px solid #f0f0f0; font-size:.88rem; }
+.prod-item:hover { background: #f8f0d4; }
+.ticket-table { font-size: .88rem; }
+.ticket-table thead { background: #0d0d1e; color: #fff; }
+.btn-agregar { background: linear-gradient(135deg,#c8a84b,#e8c96b); color:#fff; border:none;
+  border-radius:50px; font-weight:700; }
+.btn-guardar { background: linear-gradient(135deg,#28a745,#20c997); color:#fff; border:none;
+  border-radius:50px; font-weight:700; font-size:1rem; padding:.75rem 2rem; }
+.badge-tipo-entrada  { background:#d4edda; color:#155724; border-radius:50px; padding:.2rem .7rem; font-size:.78rem; font-weight:700; }
+.badge-tipo-ajuste   { background:#cce5ff; color:#004085; border-radius:50px; padding:.2rem .7rem; font-size:.78rem; font-weight:700; }
+.badge-tipo-devolucion { background:#fff3cd; color:#856404; border-radius:50px; padding:.2rem .7rem; font-size:.78rem; font-weight:700; }
+.mov-row:hover { background: #f8f9fa; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-hero">
+  <div class="container-fluid px-4">
+    <span class="section-label">POS — Inventario</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;">
+      <i class="bi bi-box-arrow-in-down me-2"></i>Entrada de Mercancía
+    </h1>
+    {% if sucursal %}<p style="color:rgba(255,255,255,.7)">Sucursal: <strong>{{ sucursal.nombre }}</strong></p>{% endif %}
+  </div>
+</div>
+
+<section style="padding:2rem 0;background:#f4f6f9;min-height:60vh;">
+<div class="container-fluid px-4">
+<div class="row g-4">
+
+  <!-- ── Formulario multi-producto ── -->
+  <div class="col-lg-7">
+    <div class="card card-form p-4">
+      <h5 class="fw-700 mb-4"><i class="bi bi-receipt me-2 text-success"></i>Nuevo ticket de entrada</h5>
+
+      <form method="post" id="formEntrada">
+        {% csrf_token %}
+
+        {% if sucursales %}
+        <div class="mb-3">
+          <label class="form-label fw-600 small">Sucursal</label>
+          <select name="sucursal" class="form-select rounded-3" onchange="this.form.submit()">
+            <option value="">— Selecciona sucursal —</option>
+            {% for s in sucursales %}
+            <option value="{{ s.id }}" {% if sucursal and sucursal.id == s.id %}selected{% endif %}>{{ s.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label fw-600 small">Tipo de movimiento</label>
+            <select name="tipo" class="form-select rounded-3">
+              <option value="entrada">Entrada de mercancía (compra/recepción)</option>
+              <option value="ajuste">Ajuste de inventario (conteo físico)</option>
+              <option value="devolucion">Devolución de cliente</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-600 small">Referencia / # Ticket proveedor</label>
+            <input type="text" name="referencia" class="form-control rounded-3"
+                   placeholder="Ej: Factura #1234, Remisión…">
+          </div>
+        </div>
+
+        <!-- Buscador para agregar producto al ticket -->
+        <div class="mb-3">
+          <label class="form-label fw-600 small">Agregar producto al ticket</label>
+          <div class="prod-search-wrap">
+            <div class="input-group">
+              <input type="text" id="prodBuscar" class="form-control rounded-start-3"
+                     placeholder="Escribe nombre o código…" autocomplete="off">
+              <button type="button" class="btn btn-agregar px-3" onclick="agregarDesdeInput()">
+                <i class="bi bi-plus-lg"></i> Agregar
+              </button>
+            </div>
+            <div class="prod-resultados" id="prodResultados"></div>
+          </div>
+        </div>
+
+        <!-- Tabla de productos del ticket -->
+        <div class="mb-3" id="tablaWrap" style="display:none">
+          <table class="table ticket-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th class="text-end" style="width:90px">Cantidad</th>
+                <th class="text-end" style="width:110px">Costo unit.</th>
+                <th class="text-end" style="width:90px">Subtotal</th>
+                <th style="width:40px"></th>
+              </tr>
+            </thead>
+            <tbody id="tablaBody"></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3" class="fw-700 text-end">Total ticket:</td>
+                <td class="fw-900 text-success text-end" id="totalTicket">$0.00</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div id="emptyMsg" class="text-center text-muted py-3 small">
+          <i class="bi bi-cart-plus" style="font-size:2rem"></i>
+          <div class="mt-1">Busca productos para agregarlos al ticket</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-600 small">Notas</label>
+          <textarea name="notas" rows="2" class="form-control rounded-3"
+                    placeholder="Observaciones opcionales…"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-guardar w-100" id="btnGuardar" disabled>
+          <i class="bi bi-check-circle me-2"></i>Registrar ticket completo
+        </button>
+      </form>
+    </div>
+
+    <div class="mt-3">
+      <a href="{% url 'pos_inventario' %}" class="btn btn-outline-dark rounded-pill btn-sm">
+        <i class="bi bi-arrow-left me-2"></i>Ver inventario
+      </a>
+      <a href="{% url 'pos_ingresos' %}" class="btn btn-outline-dark rounded-pill btn-sm ms-2">
+        <i class="bi bi-cash-stack me-1"></i>Ingresos del día
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Últimas entradas ── -->
+  <div class="col-lg-5">
+    <div class="card card-form p-4">
+      <h5 class="fw-700 mb-3"><i class="bi bi-clock-history me-2 text-muted"></i>Últimas entradas y ajustes</h5>
+      {% if ultimos %}
+      <div class="table-responsive">
+        <table class="table table-sm align-middle" style="font-size:.82rem">
+          <thead class="table-light">
+            <tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th class="text-end">Cant.</th><th class="text-end">Stock</th><th>Ref.</th></tr>
+          </thead>
+          <tbody>
+            {% for mov in ultimos %}
+            <tr class="mov-row">
+              <td class="text-muted">{{ mov.fecha|date:"d/m H:i" }}</td>
+              <td class="fw-600">{{ mov.inventario.producto.nombre|truncatechars:22 }}</td>
+              <td>
+                {% if mov.tipo == 'entrada' %}<span class="badge-tipo-entrada">Entrada</span>
+                {% elif mov.tipo == 'ajuste' %}<span class="badge-tipo-ajuste">Ajuste</span>
+                {% else %}<span class="badge-tipo-devolucion">{{ mov.get_tipo_display }}</span>{% endif %}
+              </td>
+              <td class="text-end fw-700 text-success">+{{ mov.cantidad }}</td>
+              <td class="text-end">{{ mov.stock_despues }}</td>
+              <td class="text-muted small">{{ mov.referencia|truncatechars:18 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center py-4 text-muted small">
+        <i class="bi bi-inbox" style="font-size:2rem"></i>
+        <p class="mt-2">Sin movimientos registrados.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+</div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const productos = {{ productos_json|safe }};
+const buscar    = document.getElementById('prodBuscar');
+const resultados = document.getElementById('prodResultados');
+const tablaBody  = document.getElementById('tablaBody');
+const tablaWrap  = document.getElementById('tablaWrap');
+const emptyMsg   = document.getElementById('emptyMsg');
+const btnGuardar = document.getElementById('btnGuardar');
+const totalEl    = document.getElementById('totalTicket');
+
+let items = [];
+
+buscar.addEventListener('input', () => {
+  const q = buscar.value.toLowerCase().trim();
+  resultados.innerHTML = '';
+  if (q.length < 2) { resultados.style.display = 'none'; return; }
+  const filtrados = productos.filter(p =>
+    p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)
+  ).slice(0, 10);
+  if (!filtrados.length) { resultados.style.display = 'none'; return; }
+  filtrados.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'prod-item';
+    div.innerHTML = `<span class="fw-600">${p.nombre}</span> <small class="text-muted ms-2">${p.codigo} · ${p.unidad}</small>`;
+    div.addEventListener('click', () => { agregarProducto(p); buscar.value = ''; resultados.style.display = 'none'; });
+    resultados.appendChild(div);
+  });
+  resultados.style.display = 'block';
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.prod-search-wrap')) resultados.style.display = 'none';
+});
+
+function agregarDesdeInput() {
+  const q = buscar.value.toLowerCase().trim();
+  const match = productos.find(p => p.nombre.toLowerCase() === q || p.codigo.toLowerCase() === q);
+  if (match) { agregarProducto(match); buscar.value = ''; resultados.style.display = 'none'; }
+}
+
+function agregarProducto(p) {
+  const existente = items.find(i => i.id === p.id);
+  if (existente) {
+    existente.cantidad++;
+    renderTabla();
+    return;
+  }
+  items.push({ id: p.id, nombre: p.nombre, unidad: p.unidad, cantidad: 1, costo: 0 });
+  renderTabla();
+}
+
+function renderTabla() {
+  tablaBody.innerHTML = '';
+  let total = 0;
+  items.forEach((item, idx) => {
+    const subtotal = item.cantidad * item.costo;
+    total += subtotal;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <div class="fw-600">${item.nombre}</div>
+        <small class="text-muted">${item.unidad}</small>
+        <input type="hidden" name="producto_id[]" value="${item.id}">
+      </td>
+      <td class="text-end">
+        <input type="number" name="cantidad[]" value="${item.cantidad}" min="0.001" step="0.001"
+               class="form-control form-control-sm text-end rounded-3"
+               style="width:75px;display:inline-block"
+               oninput="updateItem(${idx},'cantidad',this.value)">
+      </td>
+      <td class="text-end">
+        <div class="input-group input-group-sm" style="width:105px;display:inline-flex">
+          <span class="input-group-text">$</span>
+          <input type="number" name="costo_unitario[]" value="${item.costo}" min="0" step="0.01"
+                 class="form-control text-end"
+                 oninput="updateItem(${idx},'costo',this.value)">
+        </div>
+      </td>
+      <td class="text-end fw-700">$${subtotal.toFixed(2)}</td>
+      <td>
+        <button type="button" class="btn btn-sm text-danger p-0" onclick="quitarItem(${idx})">
+          <i class="bi bi-x-circle"></i>
+        </button>
+      </td>`;
+    tablaBody.appendChild(tr);
+  });
+  totalEl.textContent = '$' + total.toFixed(2);
+  const hayItems = items.length > 0;
+  tablaWrap.style.display = hayItems ? '' : 'none';
+  emptyMsg.style.display  = hayItems ? 'none' : '';
+  btnGuardar.disabled = !hayItems;
+}
+
+function updateItem(idx, field, val) {
+  items[idx][field] = parseFloat(val) || 0;
+  // Actualizar solo el subtotal sin rerenderizar (evita perder foco)
+  const rows = tablaBody.querySelectorAll('tr');
+  const subtotal = items[idx].cantidad * items[idx].costo;
+  rows[idx].querySelectorAll('td')[3].textContent = '$' + subtotal.toFixed(2);
+  let total = items.reduce((s, i) => s + i.cantidad * i.costo, 0);
+  totalEl.textContent = '$' + total.toFixed(2);
+}
+
+function quitarItem(idx) {
+  items.splice(idx, 1);
+  renderTabla();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,413 @@
+{% extends 'base.html' %}
+{% block title %}Gestión de Sucursales{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Layout ── */
+.suc-hero { background: linear-gradient(135deg,#0d0d1e,#1a001e); padding: 7rem 0 0; color: #fff; }
+.suc-tabs { display: flex; gap: .5rem; overflow-x: auto; padding: 0 2rem 0; scrollbar-width: none; }
+.suc-tabs::-webkit-scrollbar { display: none; }
+.suc-tab { padding: .6rem 1.4rem; border-radius: 12px 12px 0 0; cursor: pointer; white-space: nowrap;
+  font-weight: 700; font-size: .88rem; border: 2px solid transparent; color: rgba(255,255,255,.55);
+  background: rgba(255,255,255,.06); transition: .2s; text-decoration: none; }
+.suc-tab.active, .suc-tab:hover { background: #fff; color: #0d0d1e; border-color: #fff; }
+.suc-body { background: #f4f6f9; min-height: 80vh; padding: 2rem; }
+
+/* ── KPI cards ── */
+.kpi { border: none; border-radius: 16px; padding: 1.2rem 1.4rem; }
+.kpi-num { font-size: 1.9rem; font-weight: 900; line-height: 1.1; }
+.kpi-ventas   { background: linear-gradient(135deg,#FF0080,#FF1744); color: #fff; }
+.kpi-mes      { background: linear-gradient(135deg,#c8a84b,#e8c96b); color: #fff; }
+.kpi-ganancia { background: linear-gradient(135deg,#00A846,#00C853); color: #fff; }
+.kpi-criticos { background: linear-gradient(135deg,#FF6B00,#FF9100); color: #fff; }
+
+/* ── Sección ── */
+.sec-card { border: none; border-radius: 18px; box-shadow: 0 4px 20px rgba(0,0,0,.07); }
+.sec-title { font-size: .72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .1em; color: #999; margin-bottom: .75rem; }
+
+/* ── Tabla ── */
+.tbl-small { font-size: .83rem; }
+.tbl-small thead { background: #0d0d1e; color: #fff; }
+.tbl-small tbody tr:hover { background: #f0f4ff; }
+
+/* ── Usuarios ── */
+.user-chip { display: flex; align-items: center; gap: .5rem; background: #f8f9fa;
+  border-radius: 50px; padding: .35rem .9rem .35rem .5rem; font-size: .82rem; }
+.user-chip .avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg,#c8a84b,#e8c96b);
+  display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: .75rem; color: #fff; }
+.rol-badge { border-radius: 50px; padding: .15rem .6rem; font-size: .7rem; font-weight: 700; }
+.rol-cajero   { background: #e8f4fd; color: #0369a1; }
+.rol-vendedor { background: #f0fdf4; color: #166534; }
+.rol-gerente  { background: #fef9c3; color: #854d0e; }
+.rol-almacen  { background: #fce7f3; color: #9d174d; }
+
+/* ── Comparativa barras ── */
+.cmp-bar-wrap { background: #e9ecef; border-radius: 50px; height: 10px; overflow: hidden; }
+.cmp-bar { height: 100%; border-radius: 50px; background: linear-gradient(90deg,#FF0080,#c8a84b); transition: width .6s; }
+
+/* ── Stock ── */
+.stock-critico { color: #dc2626; font-weight: 700; }
+.stock-ok { color: #16a34a; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="suc-hero">
+  <div class="px-4 pb-0">
+    <div class="d-flex justify-content-between align-items-end flex-wrap gap-3 mb-3">
+      <div>
+        <span class="section-label">POS</span>
+        <h1 style="font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;">
+          Gestión de Sucursales
+        </h1>
+        <p style="color:rgba(255,255,255,.6);font-size:.9rem">
+          {{ datos|length }} sucursal(es) activa(s) · {{ hoy|date:"d/m/Y" }}
+        </p>
+      </div>
+      <div class="d-flex gap-2 flex-wrap mb-3">
+        <a href="/pos/admin-pos/" class="btn btn-outline-light rounded-pill btn-sm">📊 Dashboard ventas</a>
+        <a href="/pos/inventario/" class="btn btn-outline-light rounded-pill btn-sm">📦 Inventario</a>
+        <a href="/admin/pos/sucursal/add/" class="btn rounded-pill btn-sm fw-700"
+           style="background:#c8a84b;color:#fff"><i class="bi bi-plus-lg me-1"></i>Nueva sucursal</a>
+      </div>
+    </div>
+
+    <!-- Tabs por sucursal + comparativa -->
+    <div class="suc-tabs">
+      <a href="?suc=comparar" class="suc-tab {% if suc_activa == 'comparar' %}active{% endif %}">
+        📊 Comparativa
+      </a>
+      {% for d in datos %}
+      <a href="?suc={{ d.sucursal.id }}"
+         class="suc-tab {% if suc_activa == d.sucursal.id %}active{% endif %}"
+         id="tab-{{ d.sucursal.id }}">
+        🏪 {{ d.sucursal.nombre }}
+        {% if d.criticos %}<span style="background:#FF1744;color:#fff;border-radius:50px;padding:.1rem .45rem;font-size:.7rem;margin-left:.3rem">{{ d.criticos }}</span>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="suc-body">
+
+  <!-- ══════════════ COMPARATIVA ══════════════ -->
+  {% if suc_activa == 'comparar' or not suc_activa %}
+  <div class="row g-4">
+
+    <!-- Resumen global -->
+    <div class="col-12">
+      <div class="row g-3 mb-2">
+        <div class="col-6 col-md-3">
+          <div class="kpi kpi-ventas">
+            <div class="small opacity-80 fw-600">Ventas hoy (total)</div>
+            <div class="kpi-num">${{ total_hoy|floatformat:2 }}</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="kpi kpi-mes">
+            <div class="small opacity-80 fw-600">Ventas del mes</div>
+            <div class="kpi-num">${{ total_mes|floatformat:2 }}</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="kpi kpi-ganancia">
+            <div class="small opacity-80 fw-600">Ganancia mes</div>
+            <div class="kpi-num">${{ total_ganancia|floatformat:2 }}</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="kpi kpi-criticos">
+            <div class="small opacity-80 fw-600">Productos críticos</div>
+            <div class="kpi-num">{{ total_criticos }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla comparativa -->
+    <div class="col-lg-7">
+      <div class="card sec-card p-4">
+        <div class="sec-title">Comparativa de ventas del mes</div>
+        {% for d in datos %}
+        {% with max_venta=datos.0.venta_mes %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="fw-700 small">🏪 {{ d.sucursal.nombre }}</span>
+            <div class="text-end">
+              <span class="fw-700">${{ d.venta_mes|floatformat:2 }}</span>
+              <small class="text-muted ms-2">gan. ${{ d.ganancia_mes|floatformat:2 }}</small>
+            </div>
+          </div>
+          <div class="cmp-bar-wrap">
+            {% if max_venta %}
+            <div class="cmp-bar" style="width:{% widthratio d.venta_mes max_venta 100 %}%"></div>
+            {% endif %}
+          </div>
+          <div class="d-flex gap-3 mt-1 small text-muted">
+            <span>Hoy: ${{ d.venta_hoy|floatformat:2 }} ({{ d.num_hoy }} ventas)</span>
+            <span class="text-danger">⚠️ {{ d.criticos }} críticos</span>
+            <span>👥 {{ d.usuarios|length }} usuarios</span>
+          </div>
+        </div>
+        {% endwith %}
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Ranking -->
+    <div class="col-lg-5">
+      <div class="card sec-card p-4 mb-4">
+        <div class="sec-title">Ranking del mes</div>
+        {% for d in datos %}
+        <div class="d-flex align-items-center gap-3 py-2 {% if not forloop.last %}border-bottom{% endif %}">
+          <div class="fw-900 text-muted" style="font-size:1.5rem;width:30px">{{ forloop.counter }}</div>
+          <div class="flex-grow-1">
+            <div class="fw-700">{{ d.sucursal.nombre }}</div>
+            <div class="small text-muted">{{ d.sucursal.get_tipo_display }}</div>
+          </div>
+          <div class="text-end">
+            <div class="fw-700 text-success">${{ d.venta_mes|floatformat:2 }}</div>
+            <div class="small text-muted">{{ d.num_hoy }} ventas hoy</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="card sec-card p-4">
+        <div class="sec-title">Stock crítico global</div>
+        {% for d in datos %}
+          {% for inv in d.inv_criticos %}
+          <div class="d-flex justify-content-between align-items-center small py-1 {% if not forloop.last %}border-bottom{% endif %}">
+            <div>
+              <span class="fw-600">{{ inv.producto.nombre|truncatechars:25 }}</span>
+              <span class="text-muted ms-1">· {{ d.sucursal.nombre }}</span>
+            </div>
+            <span class="stock-critico">{{ inv.stock_actual }}/{{ inv.stock_minimo }}</span>
+          </div>
+          {% endfor %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {% else %}
+  <!-- ══════════════ DETALLE POR SUCURSAL ══════════════ -->
+  {% for d in datos %}
+  {% if d.sucursal.id == suc_activa %}
+
+  <div class="row g-4">
+
+    <!-- KPIs de esta sucursal -->
+    <div class="col-12">
+      <div class="row g-3">
+        <div class="col-6 col-md-3">
+          <div class="kpi kpi-ventas">
+            <div class="small opacity-80 fw-600">Ventas hoy</div>
+            <div class="kpi-num">${{ d.venta_hoy|floatformat:2 }}</div>
+            <div class="small opacity-70">{{ d.num_hoy }} transacciones</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="kpi kpi-mes">
+            <div class="small opacity-80 fw-600">Ventas del mes</div>
+            <div class="kpi-num">${{ d.venta_mes|floatformat:2 }}</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="kpi kpi-ganancia">
+            <div class="small opacity-80 fw-600">Ganancia mes</div>
+            <div class="kpi-num">${{ d.ganancia_mes|floatformat:2 }}</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="kpi kpi-criticos">
+            <div class="small opacity-80 fw-600">Productos críticos</div>
+            <div class="kpi-num">{{ d.criticos }}</div>
+            <div class="small opacity-70">bajo mínimo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ventas recientes -->
+    <div class="col-lg-6">
+      <div class="card sec-card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="sec-title mb-0">Últimas ventas</div>
+          <a href="/pos/creditos/?sucursal={{ d.sucursal.id }}" class="btn btn-sm btn-outline-dark rounded-pill">Ver créditos</a>
+        </div>
+        {% if d.ultimas_ventas %}
+        <table class="table tbl-small mb-0">
+          <thead><tr><th>Folio</th><th>Total</th><th>Forma pago</th><th>Cajero</th><th>Hora</th></tr></thead>
+          <tbody>
+            {% for v in d.ultimas_ventas %}
+            <tr>
+              <td class="fw-600">{{ v.folio }}</td>
+              <td class="fw-700 text-success">${{ v.total|floatformat:2 }}</td>
+              <td><span class="badge bg-secondary rounded-pill">{{ v.get_forma_pago_display }}</span></td>
+              <td class="text-muted">{{ v.cajero.username|default:"—" }}</td>
+              <td class="text-muted">{{ v.creado|date:"H:i" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center text-muted py-3 small">Sin ventas registradas aún.</div>
+        {% endif %}
+        <div class="mt-3">
+          <a href="/pos/?sucursal={{ d.sucursal.id }}" class="btn btn-sm rounded-pill fw-700 w-100"
+             style="background:linear-gradient(135deg,#FF0080,#FF1744);color:#fff">
+            <i class="bi bi-cash-coin me-1"></i>Abrir POS — {{ d.sucursal.nombre }}
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inventario crítico -->
+    <div class="col-lg-6">
+      <div class="card sec-card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="sec-title mb-0">Inventario crítico</div>
+          <a href="/pos/inventario/?sucursal={{ d.sucursal.id }}&criticos=1" class="btn btn-sm btn-outline-danger rounded-pill">Ver todos</a>
+        </div>
+        {% if d.inv_criticos %}
+        <table class="table tbl-small mb-0">
+          <thead><tr><th>Producto</th><th class="text-end">Stock</th><th class="text-end">Mínimo</th></tr></thead>
+          <tbody>
+            {% for inv in d.inv_criticos %}
+            <tr>
+              <td class="fw-600">{{ inv.producto.nombre|truncatechars:30 }}</td>
+              <td class="text-end stock-critico">{{ inv.stock_actual }} {{ inv.producto.unidad }}</td>
+              <td class="text-end text-muted">{{ inv.stock_minimo }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-3 small text-muted">
+          <i class="bi bi-check-circle-fill text-success me-1"></i>Todo el stock en buen estado 🎉
+        </div>
+        {% endif %}
+        <div class="mt-3">
+          <a href="/pos/inventario/entrada/?sucursal={{ d.sucursal.id }}" class="btn btn-sm rounded-pill fw-700 w-100"
+             style="background:linear-gradient(135deg,#28a745,#20c997);color:#fff">
+            <i class="bi bi-box-arrow-in-down me-1"></i>Registrar entrada de mercancía
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Usuarios asignados -->
+    <div class="col-12">
+      <div class="card sec-card p-4" id="suc-{{ d.sucursal.id }}">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="sec-title mb-0">Equipo de la sucursal</div>
+          <button class="btn btn-sm rounded-pill fw-700" style="background:#c8a84b;color:#fff"
+                  data-bs-toggle="collapse" data-bs-target="#formAsignar{{ d.sucursal.id }}">
+            <i class="bi bi-person-plus me-1"></i>Asignar usuario
+          </button>
+        </div>
+
+        <!-- Usuarios actuales -->
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          {% for us in d.usuarios %}
+          <div class="user-chip">
+            <div class="avatar">{{ us.usuario.first_name|first|upper|default:us.usuario.username|first|upper }}</div>
+            <div>
+              <div class="fw-600 lh-1">{{ us.usuario.get_full_name|default:us.usuario.username }}</div>
+              <span class="rol-badge rol-{{ us.rol }}">{{ us.get_rol_display }}</span>
+            </div>
+            <form method="post" action="{% url 'quitar_usuario_sucursal' us.pk %}" class="ms-1">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm p-0 text-danger" title="Quitar"
+                      onclick="return confirm('¿Quitar a {{ us.usuario.get_full_name|default:us.usuario.username }} de esta sucursal?')">
+                <i class="bi bi-x-circle"></i>
+              </button>
+            </form>
+          </div>
+          {% empty %}
+          <div class="text-muted small">Sin usuarios asignados aún.</div>
+          {% endfor %}
+        </div>
+
+        <!-- Formulario asignar (colapsable) -->
+        <div class="collapse" id="formAsignar{{ d.sucursal.id }}">
+          <hr>
+          <form method="post" action="{% url 'asignar_usuario_sucursal' d.sucursal.pk %}" class="row g-3 align-items-end">
+            {% csrf_token %}
+            <div class="col-md-5">
+              <label class="form-label small fw-600">Usuario</label>
+              <select name="usuario_id" class="form-select rounded-3" required>
+                <option value="">— Selecciona un usuario —</option>
+                {% for u in todos_usuarios %}
+                <option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }} ({{ u.username }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-600">Rol en esta sucursal</label>
+              <select name="rol" class="form-select rounded-3">
+                {% for val, label in roles %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <button type="submit" class="btn w-100 rounded-pill fw-700"
+                      style="background:linear-gradient(135deg,#0d0d1e,#1a2a4a);color:#fff">
+                <i class="bi bi-check-lg me-1"></i>Asignar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Accesos rápidos -->
+    <div class="col-12">
+      <div class="card sec-card p-4">
+        <div class="sec-title">Accesos rápidos — {{ d.sucursal.nombre }}</div>
+        <div class="row g-2">
+          <div class="col-6 col-md-2">
+            <a href="/pos/" class="btn btn-outline-dark rounded-3 w-100 py-3 small fw-700">
+              <i class="bi bi-cash-coin d-block fs-4 mb-1"></i>POS / Cobrar
+            </a>
+          </div>
+          <div class="col-6 col-md-2">
+            <a href="/pos/inventario/?sucursal={{ d.sucursal.id }}" class="btn btn-outline-dark rounded-3 w-100 py-3 small fw-700">
+              <i class="bi bi-boxes d-block fs-4 mb-1"></i>Inventario
+            </a>
+          </div>
+          <div class="col-6 col-md-2">
+            <a href="/pos/inventario/entrada/?sucursal={{ d.sucursal.id }}" class="btn btn-outline-dark rounded-3 w-100 py-3 small fw-700">
+              <i class="bi bi-box-arrow-in-down d-block fs-4 mb-1"></i>Entrada merc.
+            </a>
+          </div>
+          <div class="col-6 col-md-2">
+            <a href="/pos/creditos/" class="btn btn-outline-dark rounded-3 w-100 py-3 small fw-700">
+              <i class="bi bi-credit-card d-block fs-4 mb-1"></i>Créditos
+            </a>
+          </div>
+          <div class="col-6 col-md-2">
+            <a href="/pos/compras/" class="btn btn-outline-dark rounded-3 w-100 py-3 small fw-700">
+              <i class="bi bi-truck d-block fs-4 mb-1"></i>Compras
+            </a>
+          </div>
+          <div class="col-6 col-md-2">
+            <a href="/admin/pos/sucursal/{{ d.sucursal.pk }}/change/" class="btn btn-outline-dark rounded-3 w-100 py-3 small fw-700">
+              <i class="bi bi-gear d-block fs-4 mb-1"></i>Configurar
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  {% endif %}
+  {% endfor %}
+  {% endif %}
+
+</div>
+{% endblock %}

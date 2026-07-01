@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% block title %}{{ producto.nombre }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.det-hero { background: linear-gradient(135deg,#0a0e1a,#1a0a2e); padding: 7rem 0 3rem; color: #fff; }
+/* Galería */
+.galeria-main { border-radius: 20px; overflow: hidden; background: #f8f9fa;
+  aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; }
+.galeria-main img { width: 100%; height: 100%; object-fit: contain; cursor: zoom-in; }
+.galeria-thumb { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .75rem; }
+.thumb-btn { width: 72px; height: 72px; border-radius: 10px; overflow: hidden; cursor: pointer;
+  border: 2px solid transparent; padding: 0; transition: .15s; background: #f0f0f0; }
+.thumb-btn.active, .thumb-btn:hover { border-color: #c8a84b; }
+.thumb-btn img { width: 100%; height: 100%; object-fit: cover; }
+.thumb-placeholder { width: 72px; height: 72px; border-radius: 10px;
+  background: linear-gradient(135deg,#f8f0d4,#fff3cd);
+  display: flex; align-items: center; justify-content: center; font-size: 1.8rem; }
+/* Info */
+.precio-menudeo { font-size: 2rem; font-weight: 900; color: #c8a84b; }
+.precio-mayoreo { font-size: 2rem; font-weight: 900; color: #16a34a; }
+.precio-label   { font-size: .8rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: #999; }
+.badge-mayoreo  { background: #d4edda; color: #155724; border-radius: 50px;
+  padding: .3rem .9rem; font-size: .82rem; font-weight: 700; }
+.detalle-row { display: flex; gap: .75rem; padding: .5rem 0; border-bottom: 1px solid #f0f0f0; font-size: .9rem; }
+.detalle-row:last-child { border: none; }
+.detalle-label { color: #888; min-width: 140px; font-weight: 600; }
+.btn-agregar-det { background: linear-gradient(135deg,#c8a84b,#e8c96b); color: #fff;
+  border: none; border-radius: 50px; font-weight: 700; font-size: 1rem;
+  padding: .75rem 2rem; transition: .2s; }
+.btn-agregar-det:hover { background: linear-gradient(135deg,#b8983b,#d8b95b); color: #fff; }
+/* Relacionados */
+.rel-card { border: none; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,.07);
+  transition: .2s; text-decoration: none; color: inherit; display: block; }
+.rel-card:hover { transform: translateY(-4px); box-shadow: 0 8px 28px rgba(0,0,0,.13); }
+.rel-img { height: 140px; object-fit: cover; border-radius: 16px 16px 0 0; }
+.rel-placeholder { height: 140px; background: linear-gradient(135deg,#f8f0d4,#fff3cd);
+  border-radius: 16px 16px 0 0; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; }
+/* Modal zoom */
+.modal-zoom .modal-dialog { max-width: 90vw; }
+.modal-zoom img { max-height: 85vh; object-fit: contain; width: 100%; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<div class="det-hero">
+  <div class="container">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb" style="--bs-breadcrumb-divider-color:rgba(255,255,255,.4)">
+        <li class="breadcrumb-item"><a href="/productos/" style="color:rgba(255,255,255,.6)">Productos</a></li>
+        {% if producto.categoria %}
+        <li class="breadcrumb-item">
+          <a href="/productos/?cat={{ producto.categoria.id }}" style="color:rgba(255,255,255,.6)">{{ producto.categoria.nombre }}</a>
+        </li>
+        {% endif %}
+        <li class="breadcrumb-item active" style="color:#fff">{{ producto.nombre }}</li>
+      </ol>
+    </nav>
+  </div>
+</div>
+
+<section style="padding: 3rem 0; background: #f8f9fa;">
+  <div class="container">
+    <div class="row g-5">
+
+      <!-- ── Galería ── -->
+      <div class="col-lg-5">
+        <div class="galeria-main" id="galeriaMain">
+          {% if producto.imagen %}
+            <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" id="imgPrincipal"
+                 data-bs-toggle="modal" data-bs-target="#modalZoom">
+          {% else %}
+            <div style="font-size:5rem">
+              {% if producto.categoria and producto.categoria.tipo == 'fabricado' %}🎨{% else %}📦{% endif %}
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Thumbnails -->
+        <div class="galeria-thumb">
+          {% if producto.imagen %}
+          <button class="thumb-btn active" onclick="cambiarImagen(this, '{{ producto.imagen.url }}')">
+            <img src="{{ producto.imagen.url }}" alt="">
+          </button>
+          {% endif %}
+          {% for foto in fotos %}
+          <button class="thumb-btn" onclick="cambiarImagen(this, '{{ foto.imagen.url }}')">
+            <img src="{{ foto.imagen.url }}" alt="">
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- ── Info ── -->
+      <div class="col-lg-7">
+        {% if producto.categoria %}
+        <div class="small text-muted fw-600 mb-1">{{ producto.categoria.icono }} {{ producto.categoria.nombre }}</div>
+        {% endif %}
+
+        <h1 style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:#0a0e1a">
+          {{ producto.nombre }}
+        </h1>
+
+        {% if producto.marca %}
+        <div class="text-muted small mb-3">Marca: <strong>{{ producto.marca }}</strong>
+          {% if producto.sku %}&nbsp;·&nbsp; SKU: <code>{{ producto.sku }}</code>{% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Precio -->
+        <div class="mb-4">
+          {% if precio %}
+            <div class="precio-label">
+              {% if es_mayoreo %}Precio mayoreo (cliente verificado){% else %}Precio{% endif %}
+            </div>
+            <div class="{% if es_mayoreo %}precio-mayoreo{% else %}precio-menudeo{% endif %}">
+              ${{ precio|floatformat:2 }}
+            </div>
+            {% if es_mayoreo %}
+              <span class="badge-mayoreo"><i class="bi bi-patch-check-fill me-1"></i>Precio exclusivo para clientes verificados</span>
+            {% else %}
+              {% if user.is_authenticated and not user.verificado %}
+              <div class="small text-muted mt-1">
+                <i class="bi bi-info-circle me-1"></i>
+                <a href="{% url 'subir_verificacion' %}">Verifica tu negocio</a> para ver el precio de mayoreo.
+              </div>
+              {% elif not user.is_authenticated %}
+              <div class="small text-muted mt-1">
+                <i class="bi bi-info-circle me-1"></i>
+                <a href="/accounts/login/">Inicia sesión</a> como cliente verificado para ver precios de mayoreo.
+              </div>
+              {% endif %}
+            {% endif %}
+          {% else %}
+          <div class="text-muted">Consulta precio con nuestro equipo.</div>
+          {% endif %}
+        </div>
+
+        <!-- Detalles rápidos -->
+        <div class="mb-4">
+          {% if producto.contenido %}
+          <div class="detalle-row"><span class="detalle-label">Presentación</span><span>{{ producto.contenido }}</span></div>
+          {% endif %}
+          {% if producto.piezas_por_caja %}
+          <div class="detalle-row"><span class="detalle-label">Piezas por caja</span><span><strong>{{ producto.piezas_por_caja }} pzas</strong></span></div>
+          {% endif %}
+          {% if producto.peso %}
+          <div class="detalle-row"><span class="detalle-label">Peso por unidad</span><span>{{ producto.peso }} kg</span></div>
+          {% endif %}
+          {% if producto.marca %}
+          <div class="detalle-row"><span class="detalle-label">Marca</span><span>{{ producto.marca }}</span></div>
+          {% endif %}
+          {% if producto.sku %}
+          <div class="detalle-row"><span class="detalle-label">SKU / Código</span><span><code>{{ producto.sku }}</code></span></div>
+          {% endif %}
+        </div>
+
+        {% if producto.descripcion %}
+        <div class="mb-4">
+          <div class="precio-label mb-1">Descripción</div>
+          <p class="text-muted" style="line-height:1.7">{{ producto.descripcion }}</p>
+        </div>
+        {% endif %}
+
+        <!-- Acciones -->
+        <div class="d-flex gap-3 flex-wrap">
+          {% if user.is_authenticated and user.rol == 'cliente' %}
+          <form method="post" action="{% url 'agregar_producto' producto.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="cantidad" value="1">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <button type="submit" class="btn-agregar-det btn">
+              <i class="bi bi-cart-plus me-2"></i>Agregar al carrito
+            </button>
+          </form>
+          {% endif %}
+          <a href="/contacto/" class="btn btn-outline-dark rounded-pill px-4 fw-600">
+            <i class="bi bi-headset me-2"></i>Consultar precio
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Productos relacionados ── -->
+    {% if relacionados %}
+    <div class="mt-5 pt-4 border-top">
+      <h4 class="fw-700 mb-4">Productos relacionados</h4>
+      <div class="row g-3">
+        {% for rel in relacionados %}
+        <div class="col-6 col-md-3">
+          <a href="{% url 'producto_detalle' rel.pk %}" class="rel-card card">
+            {% if rel.imagen %}
+              <img src="{{ rel.imagen.url }}" class="rel-img w-100" alt="{{ rel.nombre }}">
+            {% else %}
+              <div class="rel-placeholder">📦</div>
+            {% endif %}
+            <div class="p-3">
+              <div class="fw-600 small">{{ rel.nombre }}</div>
+              {% if rel.precio %}
+              <div class="fw-700 mt-1" style="color:#c8a84b">${{ rel.precio|floatformat:2 }}</div>
+              {% endif %}
+            </div>
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- Modal zoom -->
+<div class="modal fade modal-zoom" id="modalZoom" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 bg-dark">
+      <div class="modal-header border-0 pb-0">
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-2">
+        <img src="" id="zoomImg" alt="{{ producto.nombre }}">
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function cambiarImagen(btn, url) {
+  document.querySelectorAll('.thumb-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const main = document.getElementById('imgPrincipal');
+  if (main) { main.src = url; main.dataset.src = url; }
+  document.getElementById('zoomImg').src = url;
+}
+
+// Al abrir modal zoom, carga la imagen actual
+document.getElementById('modalZoom').addEventListener('show.bs.modal', function() {
+  const main = document.getElementById('imgPrincipal');
+  if (main) document.getElementById('zoomImg').src = main.src;
+});
+</script>
+{% endblock %}

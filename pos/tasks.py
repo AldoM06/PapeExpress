@@ -40,20 +40,12 @@ def barrido_inventario_critico():
         from pos.models import Inventario
         from produccion.telegram import enviar_async
 
-        criticos = Inventario.objects.filter(
-            stock_actual__lte=models.F('stock_minimo'),
-            stock_minimo__gt=0,
-            sucursal__activa=True,
-        ).select_related('producto', 'sucursal').order_by('sucursal__nombre', 'producto__nombre')
-
-        # Import aquí para evitar circular
-        from django.db import models
-
+        from django.db.models import F
         criticos = Inventario.objects.select_related('producto', 'sucursal').filter(
+            stock_actual__lte=F('stock_minimo'),
             stock_minimo__gt=0,
             sucursal__activa=True,
-        )
-        criticos = [i for i in criticos if i.bajo_minimo]
+        ).order_by('sucursal__nombre', 'producto__nombre')
 
         if not criticos:
             return

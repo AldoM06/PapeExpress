@@ -35,8 +35,20 @@
         <li class="nav-item"><a class="nav-link" href="/contacto/">Contacto</a></li>
       </ul>
 
-      <div class="ms-lg-3 mt-3 mt-lg-0 d-flex gap-2 flex-wrap">
+      <div class="ms-lg-3 mt-3 mt-lg-0 d-flex gap-2 flex-wrap align-items-center">
         {% if user.is_authenticated %}
+          {% if user.rol == 'cliente' %}
+          <a href="/cotizaciones/carrito/" class="btn btn-outline-light btn-sm rounded-pill position-relative">
+            <i class="bi bi-cart3"></i>
+            {% with carrito=request.session.carrito %}
+            {% if carrito %}
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark" style="font-size:.65rem">
+              {{ carrito|length }}
+            </span>
+            {% endif %}
+            {% endwith %}
+          </a>
+          {% endif %}
           <a href="/accounts/dashboard/" class="btn btn-outline-light btn-sm rounded-pill">
             <i class="bi bi-person-fill me-1"></i>{{ user.first_name|default:user.username }}
           </a>
