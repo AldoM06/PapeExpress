@@ -9,6 +9,7 @@ def _visibilidades_permitidas(user):
     """Retorna la lista de valores de visibilidad que el usuario puede ver."""
     permitidas = ['publico']
     if user.is_authenticated:
+        permitidas.append('registrados')
         rol = getattr(user, 'rol', '')
         if rol == 'cliente' and getattr(user, 'verificado', False):
             permitidas.append('clientes')

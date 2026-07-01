@@ -37,6 +37,7 @@ class Producto(models.Model):
     sku            = models.CharField('SKU / Código', max_length=100, blank=True)
     VISIBILIDAD_CHOICES = [
         ('publico',   'Público (todos)'),
+        ('registrados', 'Usuarios registrados'),
         ('clientes',  'Solo clientes verificados'),
         ('socios',    'Solo socios'),
     ]
