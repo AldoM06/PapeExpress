@@ -26,13 +26,13 @@ class CategoriaAdmin(admin.ModelAdmin):
 @admin.register(Producto)
 class ProductoAdmin(admin.ModelAdmin):
     list_display  = ('nombre', 'categoria', 'marca', 'precio', 'precio_mayoreo',
-                     'peso', 'disponible', 'mostrar_en_portada', 'destacado', 'orden')
-    list_filter   = ('categoria', 'disponible', 'mostrar_en_portada', 'destacado', 'categoria__tipo')
-    list_editable = ('precio', 'precio_mayoreo', 'peso', 'disponible', 'mostrar_en_portada', 'destacado', 'orden')
+                     'peso', 'visibilidad', 'disponible', 'mostrar_en_portada', 'destacado', 'orden')
+    list_filter   = ('categoria', 'visibilidad', 'disponible', 'mostrar_en_portada', 'destacado', 'categoria__tipo')
+    list_editable = ('precio', 'precio_mayoreo', 'peso', 'visibilidad', 'disponible', 'mostrar_en_portada', 'destacado', 'orden')
     search_fields = ('nombre', 'descripcion', 'marca', 'sku')
     ordering      = ('orden', 'nombre')
     fieldsets = (
-        ('General', {'fields': ('categoria', 'nombre', 'descripcion', 'imagen', 'disponible', 'mostrar_en_portada', 'destacado', 'orden')}),
+        ('General', {'fields': ('categoria', 'nombre', 'descripcion', 'imagen', 'visibilidad', 'disponible', 'mostrar_en_portada', 'destacado', 'orden')}),
         ('Precios', {'fields': ('precio', 'precio_mayoreo', 'peso')}),
         ('Detalles', {'fields': ('marca', 'sku', 'piezas_por_caja', 'contenido')}),
     )
