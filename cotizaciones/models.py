@@ -10,6 +10,26 @@ class TarifaEnvio(models.Model):
     precio_kg_extra = models.DecimalField('Precio por kg extra ($)', max_digits=8, decimal_places=2, default=30)
     activa          = models.BooleanField('Tarifa activa', default=True)
 
+    # ── Promoción por fechas ──────────────────────────────
+    promo_activa    = models.BooleanField('Promo por fechas activa', default=False)
+    promo_precio    = models.DecimalField('Precio con promo ($)', max_digits=8, decimal_places=2,
+                       null=True, blank=True,
+                       help_text='Precio fijo de envío durante la promo. Ej: $120')
+    promo_inicio    = models.DateField('Inicio de promo', null=True, blank=True)
+    promo_fin       = models.DateField('Fin de promo', null=True, blank=True)
+    promo_etiqueta  = models.CharField('Etiqueta promo', max_length=80, blank=True,
+                       help_text='Texto que ve el cliente. Ej: "¡Envío especial de temporada!"')
+
+    # ── Envío gratis / descuento por monto mínimo ────────
+    monto_minimo_promo   = models.DecimalField('Monto mínimo para promo ($)', max_digits=10, decimal_places=2,
+                            null=True, blank=True,
+                            help_text='Si el subtotal del pedido supera este monto se aplica el precio especial')
+    precio_monto_minimo  = models.DecimalField('Precio de envío con monto mínimo ($)', max_digits=8, decimal_places=2,
+                            null=True, blank=True,
+                            help_text='Pon 0 para envío gratis. Ej: $0 o $50')
+    monto_minimo_etiqueta = models.CharField('Etiqueta monto mínimo', max_length=80, blank=True,
+                            help_text='Ej: "¡Envío gratis en compras mayores a $1,500!"')
+
     class Meta:
         verbose_name = 'Tarifa de Envío PapeExpress'
         verbose_name_plural = 'Tarifas de Envío PapeExpress'
@@ -22,13 +42,38 @@ class TarifaEnvio(models.Model):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
 
-    def calcular(self, peso_kg: Decimal) -> Decimal:
-        """Calcula el costo de envío PapeExpress para un peso dado."""
+    def promo_fechas_vigente(self):
+        """Retorna True si la promo por fechas está activa hoy."""
+        from django.utils import timezone
+        if not self.promo_activa or not self.promo_precio:
+            return False
+        hoy = timezone.now().date()
+        inicio_ok = (self.promo_inicio is None) or (hoy >= self.promo_inicio)
+        fin_ok    = (self.promo_fin    is None) or (hoy <= self.promo_fin)
+        return inicio_ok and fin_ok
+
+    def calcular(self, peso_kg: Decimal, subtotal: Decimal = Decimal('0')):
+        """
+        Calcula el costo de envío aplicando promos si corresponde.
+        Prioridad: monto mínimo > promo por fechas > tarifa estándar.
+        Retorna (costo, etiqueta_promo | None).
+        """
         peso = Decimal(str(peso_kg))
+
+        # 1. Promo por monto mínimo
+        if (self.monto_minimo_promo and subtotal >= self.monto_minimo_promo
+                and self.precio_monto_minimo is not None):
+            return self.precio_monto_minimo, self.monto_minimo_etiqueta or '¡Descuento por volumen aplicado!'
+
+        # 2. Promo por fechas
+        if self.promo_fechas_vigente():
+            return self.promo_precio, self.promo_etiqueta or '¡Precio especial de envío!'
+
+        # 3. Tarifa estándar
         if peso <= self.peso_base_kg:
-            return self.precio_base
+            return self.precio_base, None
         kg_extra = peso - self.peso_base_kg
-        return self.precio_base + (kg_extra * self.precio_kg_extra)
+        return self.precio_base + (kg_extra * self.precio_kg_extra), None
 
 
 class Cotizacion(models.Model):

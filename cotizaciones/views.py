@@ -71,13 +71,14 @@ def carrito_view(request):
     cantidad_total = sum(cant for _, cant in items)
     tarifa         = TarifaEnvio.get()
     usuario        = request.user
-    # Tarifa preferencial: precio fijo sin importar el peso
+    # Tarifa preferencial: precio fijo sin importar el peso ni promos
     if usuario.precio_envio_especial is not None:
-        costo_envio_pe   = usuario.precio_envio_especial
-        tarifa_especial  = True
+        costo_envio_pe  = usuario.precio_envio_especial
+        tarifa_especial = True
+        promo_etiqueta  = None
     else:
-        costo_envio_pe   = tarifa.calcular(peso_total)
-        tarifa_especial  = False
+        costo_envio_pe, promo_etiqueta = tarifa.calcular(peso_total, subtotal)
+        tarifa_especial = False
 
     return render(request, 'cotizaciones/carrito.html', {
         'items':          items,
@@ -85,9 +86,10 @@ def carrito_view(request):
         'subtotal':       subtotal,
         'cantidad_total': cantidad_total,
         'verificado':     _cliente_verificado(usuario) if items else None,
-        'tarifa':         tarifa,
-        'costo_envio_pe': costo_envio_pe,
+        'tarifa':          tarifa,
+        'costo_envio_pe':  costo_envio_pe,
         'tarifa_especial': tarifa_especial,
+        'promo_etiqueta':  promo_etiqueta,
         # Dirección guardada en el perfil para autocompletar
         'dir_default': {
             'calle':   usuario.dir_calle,
@@ -178,7 +180,11 @@ def subir_verificacion(request):
 @login_required
 def estado_verificacion(request):
     """Endpoint liviano para que la página de espera consulte si ya fue aprobado."""
-    return JsonResponse({'verificado': request.user.verificado})
+    from django.contrib.auth import get_user_model
+    Usuario = get_user_model()
+    # Leer directo de BD, no del objeto cacheado en la sesión
+    verificado = Usuario.objects.filter(pk=request.user.pk).values_list('verificado', flat=True).first()
+    return JsonResponse({'verificado': bool(verificado)})
 
 
 # ── Enviar cotización ─────────────────────────────────────────────────────────
@@ -252,7 +258,7 @@ def enviar_cotizacion(request):
             if request.user.precio_envio_especial is not None:
                 costo_envio = request.user.precio_envio_especial
             else:
-                costo_envio = TarifaEnvio.get().calcular(peso_total)
+                costo_envio, _ = TarifaEnvio.get().calcular(peso_total, total_estimado)
 
         cotizacion.peso_total     = peso_total
         cotizacion.total_estimado = total_estimado

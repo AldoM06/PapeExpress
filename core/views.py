@@ -1,7 +1,22 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
 from .models import Producto, Categoria, MensajeContacto, ConfiguracionSitio, FotoProducto
 from .forms import ContactoForm
+
+
+def _visibilidades_permitidas(user):
+    """Retorna la lista de valores de visibilidad que el usuario puede ver."""
+    permitidas = ['publico']
+    if user.is_authenticated:
+        rol = getattr(user, 'rol', '')
+        if rol == 'cliente' and getattr(user, 'verificado', False):
+            permitidas.append('clientes')
+        if rol == 'socio':
+            permitidas += ['clientes', 'socios']
+        if user.is_staff or user.is_superuser:
+            permitidas += ['clientes', 'socios']
+    return permitidas
 
 
 def _precio_visible(request, producto):
@@ -23,7 +38,8 @@ def _precio_visible(request, producto):
 
 def home(request):
     config = ConfiguracionSitio.get()
-    productos_portada = Producto.objects.filter(mostrar_en_portada=True, disponible=True)[:8]
+    permitidas = _visibilidades_permitidas(request.user)
+    productos_portada = Producto.objects.filter(mostrar_en_portada=True, disponible=True, visibilidad__in=permitidas)[:8]
     return render(request, 'index.html', {
         'config': config,
         'productos_portada': productos_portada,
@@ -36,14 +52,15 @@ def productos_view(request):
     categoria_id = request.GET.get('cat')
     tipo_filtro  = request.GET.get('tipo', 'todos')
 
-    productos = Producto.objects.filter(disponible=True).select_related('categoria')
+    user = request.user
+    permitidas = _visibilidades_permitidas(user)
+    productos = Producto.objects.filter(disponible=True, visibilidad__in=permitidas).select_related('categoria')
     if categoria_id:
         productos = productos.filter(categoria_id=categoria_id)
     if tipo_filtro in ('reventa', 'fabricado'):
         productos = productos.filter(categoria__tipo=tipo_filtro)
 
     # Precio visible según rol
-    user = request.user
     es_mayoreo = (
         user.is_authenticated
         and getattr(user, 'verificado', False)
@@ -61,10 +78,11 @@ def productos_view(request):
 
 
 def producto_detalle(request, pk):
-    producto   = get_object_or_404(Producto, pk=pk, disponible=True)
+    permitidas = _visibilidades_permitidas(request.user)
+    producto   = get_object_or_404(Producto, pk=pk, disponible=True, visibilidad__in=permitidas)
     fotos      = producto.fotos.all()
     relacionados = Producto.objects.filter(
-        categoria=producto.categoria, disponible=True
+        categoria=producto.categoria, disponible=True, visibilidad__in=permitidas
     ).exclude(pk=pk)[:4]
 
     precio, es_mayoreo = _precio_visible(request, producto)
@@ -90,3 +108,9 @@ def contacto_view(request):
         messages.success(request, '¡Mensaje enviado! Te contactaremos pronto.')
         return redirect('contacto')
     return render(request, 'contacto.html', {'form': form})
+
+
+@staff_member_required
+def presentacion_socios(request):
+    return render(request, "presentacion_socios.html")
+

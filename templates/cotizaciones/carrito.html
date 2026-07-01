@@ -92,9 +92,14 @@
                     {% if tarifa_especial %}
                       <i class="bi bi-star-fill me-1 text-warning"></i>
                       <strong>Tarifa preferencial exclusiva</strong><br>
-                      <span class="text-muted">Costo fijo de envío:
+                      <span class="text-muted">Costo fijo:
                         <strong id="costoEnvioDisplay" class="text-success">${{ costo_envio_pe|floatformat:2 }}</strong>
-                        sin importar el peso.
+                        sin importar el peso.</span>
+                    {% elif promo_etiqueta %}
+                      <i class="bi bi-tags-fill me-1 text-danger"></i>
+                      <strong class="text-danger">{{ promo_etiqueta }}</strong><br>
+                      <span class="text-muted">Precio de envío con promoción:
+                        <strong id="costoEnvioDisplay" class="text-danger">${{ costo_envio_pe|floatformat:2 }}</strong>
                       </span>
                     {% else %}
                       <i class="bi bi-info-circle me-1 text-primary"></i>
@@ -102,6 +107,13 @@
                       — después <strong>${{ tarifa.precio_kg_extra }}/kg</strong> adicional.<br>
                       <span class="text-muted">Tu pedido pesa <strong>{{ peso_total|floatformat:3 }} kg</strong>
                       → costo estimado: <strong id="costoEnvioDisplay">${{ costo_envio_pe|floatformat:2 }}</strong></span>
+                      {% if tarifa.monto_minimo_promo %}
+                      <div class="mt-1 small" style="color:#856404">
+                        <i class="bi bi-gift me-1"></i>
+                        {{ tarifa.monto_minimo_etiqueta|default:"¡Agrega más productos para obtener descuento en envío!" }}
+                        (mínimo ${{ tarifa.monto_minimo_promo|floatformat:2 }})
+                      </div>
+                      {% endif %}
                     {% endif %}
                   </div>
                 </div>

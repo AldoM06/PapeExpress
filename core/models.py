@@ -35,6 +35,12 @@ class Producto(models.Model):
     contenido      = models.CharField('Contenido / presentación', max_length=200, blank=True,
                        help_text='Ej: Caja con 12 pzas, Bolsa 100 hojas, Paquete x 6')
     sku            = models.CharField('SKU / Código', max_length=100, blank=True)
+    VISIBILIDAD_CHOICES = [
+        ('publico',   'Público (todos)'),
+        ('clientes',  'Solo clientes verificados'),
+        ('socios',    'Solo socios'),
+    ]
+    visibilidad    = models.CharField('Visible para', max_length=20, choices=VISIBILIDAD_CHOICES, default='publico')
     disponible     = models.BooleanField(default=True)
     mostrar_en_portada = models.BooleanField(default=False, verbose_name='Mostrar en portada')
     destacado      = models.BooleanField(default=False)
