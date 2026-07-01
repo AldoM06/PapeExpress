@@ -279,7 +279,7 @@ nav.pe-navbar { display: none; }
       <div class="card border-0 rounded-4 p-3">
         {% for u in verificaciones_pendientes %}
         <div class="d-flex align-items-center gap-3 py-2 {% if not forloop.last %}border-bottom{% endif %}">
-          <img src="{{ u.foto_negocio.url }}" style="width:48px;height:48px;object-fit:cover;border-radius:10px" alt="">
+          {% if u.foto_negocio %}<img src="{{ u.foto_negocio.url }}" style="width:48px;height:48px;object-fit:cover;border-radius:10px" alt="">{% endif %}
           <div class="flex-grow-1 small">
             <div class="fw-700">{{ u.get_full_name|default:u.username }}</div>
             <div class="text-muted">{{ u.email }} · {{ u.telefono|default:"sin tel" }}</div>

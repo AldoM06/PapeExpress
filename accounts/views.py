@@ -73,7 +73,7 @@ def dashboard_admin(request):
             .order_by('-creado'),
         'verificaciones_pendientes': Usuario.objects.filter(
             foto_negocio__isnull=False, verificado=False, rol='cliente'
-        ),
+        ).exclude(foto_negocio=''),
     }
     return render(request, 'dashboard/admin.html', context)
 
