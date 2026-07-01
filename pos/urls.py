@@ -37,6 +37,9 @@ urlpatterns = [
     path('admin-pos/',              views.dashboard_admin_pos,   name='dashboard_admin_pos'),
     path('admin-pos/barrido/',      views.barrido_manual,        name='barrido_manual'),
 
+    # Dashboard de sucursal (gerente/vendedor/almacén/cajero)
+    path('mi-sucursal/',            views.dashboard_sucursal,    name='dashboard_sucursal'),
+
     # Gestión de sucursales
     path('sucursales/',             views.dashboard_sucursales,  name='dashboard_sucursales'),
     path('sucursales/<int:suc_pk>/asignar/', views.asignar_usuario_sucursal, name='asignar_usuario_sucursal'),

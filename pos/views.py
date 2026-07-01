@@ -731,3 +731,49 @@ def barrido_manual(request):
     barrido_inventario_critico()
     messages.success(request, 'Barrido de inventario ejecutado. Revisa Telegram.')
     return redirect('dashboard_admin_pos')
+
+
+# ── DASHBOARD SUCURSAL (gerente/vendedor/almacén/cajero) ──────────────────────
+@login_required
+def dashboard_sucursal(request):
+    from datetime import date
+    from django.db.models import Sum, Count
+
+    us = request.user.sucursales_pos.filter(activo=True).select_related('sucursal').first()
+    if not us:
+        messages.error(request, 'No tienes ninguna sucursal asignada.')
+        return redirect('home')
+
+    sucursal = us.sucursal
+    rol      = us.rol
+    hoy      = date.today()
+
+    # Ventas del día
+    ventas_hoy = Venta.objects.filter(sucursal=sucursal, creado__date=hoy)
+    total_hoy  = ventas_hoy.aggregate(t=Sum('total'))['t'] or 0
+    num_ventas = ventas_hoy.count()
+
+    # Últimas 5 ventas
+    ultimas_ventas = ventas_hoy.select_related('cajero').order_by('-creado')[:5]
+
+    # Stock crítico de esta sucursal
+    from .models import Inventario
+    criticos = Inventario.objects.filter(
+        sucursal=sucursal, stock_actual__lte=F('stock_minimo'), stock_minimo__gt=0
+    ).select_related('producto').order_by('stock_actual')[:8]
+
+    # Equipo de la sucursal
+    equipo = UsuarioSucursal.objects.filter(
+        sucursal=sucursal, activo=True
+    ).select_related('usuario').order_by('rol')
+
+    return render(request, 'pos/dashboard_sucursal.html', {
+        'sucursal':      sucursal,
+        'rol':           rol,
+        'hoy':           hoy,
+        'total_hoy':     total_hoy,
+        'num_ventas':    num_ventas,
+        'ultimas_ventas': ultimas_ventas,
+        'criticos':      criticos,
+        'equipo':        equipo,
+    })

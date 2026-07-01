@@ -49,6 +49,11 @@
             {% endwith %}
           </a>
           {% endif %}
+          {% if user.sucursales_pos.exists %}
+          <a href="{% url 'dashboard_sucursal' %}" class="btn btn-outline-light btn-sm rounded-pill">
+            <i class="bi bi-display me-1"></i>Mi Sucursal
+          </a>
+          {% endif %}
           <a href="/accounts/dashboard/" class="btn btn-outline-light btn-sm rounded-pill">
             <i class="bi bi-person-fill me-1"></i>{{ user.first_name|default:user.username }}
           </a>

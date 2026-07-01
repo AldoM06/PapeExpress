@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+{% block title %}Mi Sucursal — {{ sucursal.nombre }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.hero-suc { background:linear-gradient(135deg,#0a0e1a,#1a0a2e); padding:7rem 0 3rem; color:#fff; }
+.quick-card {
+  background:#fff; border-radius:20px; padding:1.5rem 1.2rem;
+  box-shadow:0 4px 20px rgba(0,0,0,.07); text-align:center;
+  text-decoration:none; color:inherit; display:block;
+  transition:.25s; border:2px solid transparent;
+}
+.quick-card:hover { transform:translateY(-5px); box-shadow:0 12px 36px rgba(0,0,0,.13); border-color:#c8a84b; color:inherit; }
+.quick-card i { font-size:2rem; display:block; margin-bottom:.6rem; }
+.stat-box { background:#fff; border-radius:20px; padding:1.5rem; box-shadow:0 4px 20px rgba(0,0,0,.07); }
+.rol-badge { padding:.3rem .9rem; border-radius:50px; font-size:.8rem; font-weight:700; }
+.venta-row { background:#f8f9fa; border-radius:12px; padding:.75rem 1rem; margin-bottom:.5rem; }
+.critico-item { background:#fff5f5; border:1px solid #ffd0d0; border-radius:10px; padding:.6rem 1rem; margin-bottom:.4rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="hero-suc">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div>
+        <span class="section-label">{{ sucursal.nombre }}</span>
+        <h1 style="font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;">
+          Bienvenido, {{ user.first_name|default:user.username }}
+        </h1>
+        <p style="color:rgba(255,255,255,.6)">
+          {{ hoy|date:"l d \d\e F \d\e Y" }}
+          &nbsp;·&nbsp;
+          <span class="rol-badge"
+            style="background:{% if rol == 'gerente' %}#ffd700;color:#000{% elif rol == 'vendedor' %}#4ade80;color:#064e3b{% elif rol == 'almacen' %}#60a5fa;color:#1e3a5f{% else %}#e9ecef;color:#333{% endif %}">
+            {{ rol|title }}
+          </span>
+        </p>
+      </div>
+      <div class="text-end">
+        <div style="font-size:2.5rem;font-weight:900;color:#c8a84b">${{ total_hoy|floatformat:2 }}</div>
+        <small style="color:rgba(255,255,255,.6)">{{ num_ventas }} venta{{ num_ventas|pluralize }} hoy</small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section style="padding:2.5rem 0; background:#f8f9fa; min-height:60vh;">
+  <div class="container">
+
+    <!-- Accesos rápidos según rol -->
+    <h5 class="fw-700 mb-3">Accesos rápidos</h5>
+    <div class="row g-3 mb-4">
+
+      {% if rol == 'cajero' or rol == 'vendedor' or rol == 'gerente' %}
+      <div class="col-6 col-md-3">
+        <a href="{% url 'pos' %}" class="quick-card">
+          <i class="bi bi-display" style="color:#c8a84b"></i>
+          <span class="fw-700">Abrir POS</span>
+          <small class="text-muted d-block">Registrar venta</small>
+        </a>
+      </div>
+      <div class="col-6 col-md-3">
+        <a href="{% url 'pos_ingresos' %}" class="quick-card">
+          <i class="bi bi-cash-coin" style="color:#16a34a"></i>
+          <span class="fw-700">Ingresos del día</span>
+          <small class="text-muted d-block">Ver ventas de hoy</small>
+        </a>
+      </div>
+      {% endif %}
+
+      {% if rol == 'cajero' or rol == 'vendedor' or rol == 'gerente' %}
+      <div class="col-6 col-md-3">
+        <a href="{% url 'ventas_credito' %}" class="quick-card">
+          <i class="bi bi-credit-card" style="color:#0d6efd"></i>
+          <span class="fw-700">Créditos</span>
+          <small class="text-muted d-block">Ventas pendientes</small>
+        </a>
+      </div>
+      {% endif %}
+
+      {% if rol == 'almacen' or rol == 'gerente' %}
+      <div class="col-6 col-md-3">
+        <a href="{% url 'entrada_mercancia' %}" class="quick-card">
+          <i class="bi bi-box-arrow-in-down" style="color:#7c3aed"></i>
+          <span class="fw-700">Entrada mercancía</span>
+          <small class="text-muted d-block">Registrar stock</small>
+        </a>
+      </div>
+      <div class="col-6 col-md-3">
+        <a href="{% url 'pos_inventario' %}" class="quick-card">
+          <i class="bi bi-boxes" style="color:#0891b2"></i>
+          <span class="fw-700">Inventario</span>
+          <small class="text-muted d-block">Ver existencias</small>
+        </a>
+      </div>
+      {% endif %}
+
+      {% if rol == 'gerente' %}
+      <div class="col-6 col-md-3">
+        <a href="{% url 'pos_productos_lista' %}" class="quick-card">
+          <i class="bi bi-grid" style="color:#ea580c"></i>
+          <span class="fw-700">Productos</span>
+          <small class="text-muted d-block">Catálogo</small>
+        </a>
+      </div>
+      <div class="col-6 col-md-3">
+        <a href="{% url 'pos_compras' %}" class="quick-card">
+          <i class="bi bi-receipt" style="color:#be185d"></i>
+          <span class="fw-700">Compras</span>
+          <small class="text-muted d-block">Analizar tickets</small>
+        </a>
+      </div>
+      <div class="col-6 col-md-3">
+        <a href="{% url 'anticipos' %}" class="quick-card">
+          <i class="bi bi-wallet2" style="color:#b45309"></i>
+          <span class="fw-700">Anticipos</span>
+          <small class="text-muted d-block">Gestionar</small>
+        </a>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <div class="row g-4">
+
+      <!-- Últimas ventas -->
+      {% if rol != 'almacen' %}
+      <div class="col-lg-6">
+        <div class="stat-box">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <h6 class="fw-700 mb-0"><i class="bi bi-receipt me-2" style="color:#c8a84b"></i>Últimas ventas hoy</h6>
+            <a href="{% url 'pos_ingresos' %}" class="btn btn-sm btn-outline-dark rounded-pill">Ver todas</a>
+          </div>
+          {% if ultimas_ventas %}
+            {% for v in ultimas_ventas %}
+            <div class="venta-row d-flex align-items-center justify-content-between">
+              <div>
+                <div class="fw-600 small">Ticket #{{ v.id }}</div>
+                <small class="text-muted">{{ v.creado|time:"H:i" }} · {{ v.cajero.get_full_name|default:v.cajero.username }}</small>
+              </div>
+              <span class="fw-700" style="color:#16a34a">${{ v.total|floatformat:2 }}</span>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="text-center py-4 text-muted">
+              <i class="bi bi-clock fs-3 d-block mb-2"></i>Aún no hay ventas hoy
+            </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Stock crítico -->
+      <div class="col-lg-{% if rol == 'almacen' %}12{% else %}6{% endif %}">
+        <div class="stat-box">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <h6 class="fw-700 mb-0"><i class="bi bi-exclamation-triangle me-2 text-danger"></i>Stock crítico</h6>
+            <a href="{% url 'pos_inventario' %}" class="btn btn-sm btn-outline-danger rounded-pill">Ver inventario</a>
+          </div>
+          {% if criticos %}
+            {% for inv in criticos %}
+            <div class="critico-item d-flex align-items-center justify-content-between">
+              <div>
+                <div class="fw-600 small">{{ inv.producto.nombre }}</div>
+                <small class="text-muted">Mínimo: {{ inv.stock_minimo }}</small>
+              </div>
+              <span class="badge rounded-pill"
+                style="background:{% if inv.stock_actual == 0 %}#dc2626{% else %}#f59e0b{% endif %};color:#fff;font-size:.85rem">
+                {{ inv.stock_actual }} uds
+              </span>
+            </div>
+            {% endfor %}
+            {% if rol == 'almacen' or rol == 'gerente' %}
+            <a href="{% url 'entrada_mercancia' %}" class="btn btn-sm btn-danger rounded-pill mt-3 w-100">
+              <i class="bi bi-box-arrow-in-down me-1"></i>Registrar entrada
+            </a>
+            {% endif %}
+          {% else %}
+            <div class="text-center py-4 text-muted">
+              <i class="bi bi-check-circle fs-3 d-block mb-2 text-success"></i>Todo el stock en niveles normales
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Equipo de la sucursal -->
+      <div class="col-12">
+        <div class="stat-box">
+          <h6 class="fw-700 mb-3"><i class="bi bi-people me-2" style="color:#6c3fc5"></i>Equipo — {{ sucursal.nombre }}</h6>
+          <div class="row g-2">
+            {% for us in equipo %}
+            <div class="col-6 col-md-3">
+              <div class="d-flex align-items-center gap-2 p-2 rounded-3" style="background:#f8f9fa">
+                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#c8a84b,#e0b84b);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.9rem;flex-shrink:0">
+                  {{ us.usuario.get_full_name|first|upper|default:us.usuario.username|first|upper }}
+                </div>
+                <div>
+                  <div class="fw-600 small">{{ us.usuario.get_full_name|default:us.usuario.username }}</div>
+                  <small class="text-muted">{{ us.get_rol_display }}</small>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+{% endblock %}
