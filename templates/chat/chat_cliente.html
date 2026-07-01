@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+{% block title %}Chat con PapeExpress{% endblock %}
+
+{% block extra_css %}
+<style>
+.chat-wrap { max-width:680px; margin:0 auto; }
+.chat-box { height:460px; overflow-y:auto; background:#f8f9fa; border-radius:16px; padding:1.2rem; display:flex; flex-direction:column; gap:.6rem; }
+.burbuja { max-width:78%; padding:.65rem 1rem; border-radius:18px; font-size:.95rem; line-height:1.45; word-break:break-word; }
+.burbuja.cliente { background:#c8a84b; color:#fff; align-self:flex-end; border-bottom-right-radius:4px; }
+.burbuja.agente  { background:#0a0e1a; color:#fff; align-self:flex-start; border-bottom-left-radius:4px; }
+.burbuja.sistema { background:#e9ecef; color:#555; align-self:center; font-size:.82rem; font-style:italic; border-radius:50px; padding:.35rem .9rem; }
+.origen-label { font-size:.72rem; color:#999; margin-bottom:2px; }
+.estado-pill { display:inline-flex; align-items:center; gap:.4rem; padding:.3rem .8rem; border-radius:50px; font-size:.8rem; font-weight:600; }
+.estado-abierta  { background:#fef3c7; color:#92400e; }
+.estado-atendida { background:#d1fae5; color:#065f46; }
+.contact-form-card { background:#fff; border-radius:20px; box-shadow:0 8px 32px rgba(0,0,0,.1); padding:2rem; max-width:420px; margin:0 auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<section style="padding:3rem 0; min-height:80vh; background:#f8f9fa;">
+  <div class="container chat-wrap">
+
+    {% if not conv %}
+    <!-- Formulario para visitante anónimo -->
+    <div class="contact-form-card">
+      <div class="text-center mb-4">
+        <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#c8a84b,#e0b84b);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
+          <i class="bi bi-chat-dots-fill text-white fs-3"></i>
+        </div>
+        <h4 class="fw-700 mb-1">Chatea con nosotros</h4>
+        <p class="text-muted small">Comparte tus datos y un asesor te atenderá en breve.</p>
+      </div>
+      <div id="formError" class="alert alert-danger d-none small"></div>
+      <div class="mb-3">
+        <label class="form-label fw-600 small">Nombre *</label>
+        <input type="text" id="visitNombre" class="form-control" placeholder="Tu nombre completo">
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-600 small">Teléfono</label>
+        <input type="tel" id="visitTelefono" class="form-control" placeholder="55 1234 5678">
+      </div>
+      <div class="mb-4">
+        <label class="form-label fw-600 small">Correo electrónico</label>
+        <input type="email" id="visitEmail" class="form-control" placeholder="correo@ejemplo.com">
+      </div>
+      <button id="btnIniciar" class="btn btn-pe w-100 rounded-pill py-2 fw-600">
+        <i class="bi bi-chat-dots me-2"></i>Iniciar chat
+      </button>
+    </div>
+
+    {% else %}
+    <!-- Chat activo -->
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <div>
+        <h4 class="fw-700 mb-0">Chat con PapeExpress</h4>
+        <small class="text-muted">Un asesor responderá en breve</small>
+      </div>
+      <span class="estado-pill estado-{{ conv.estado }}" id="estadoPill">
+        {% if conv.estado == 'abierta' %}⏳ Esperando agente
+        {% elif conv.estado == 'atendida' %}🟢 Agente conectado
+        {% else %}⬛ Cerrado{% endif %}
+      </span>
+    </div>
+
+    <div class="chat-box" id="chatBox">
+      {% for msg in historial %}
+        {% if msg.origen == 'sistema' %}
+          <div class="burbuja sistema">{{ msg.texto }}</div>
+        {% else %}
+          <div style="display:flex;flex-direction:column;align-items:{% if msg.origen == 'cliente' %}flex-end{% else %}flex-start{% endif %}">
+            <span class="origen-label">
+              {% if msg.origen == 'cliente' %}Tú{% else %}Asesor PapeExpress{% endif %}
+              · {{ msg.enviado|time:"H:i" }}
+            </span>
+            <div class="burbuja {{ msg.origen }}">{{ msg.texto }}</div>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    {% if conv.estado != 'cerrada' %}
+    <div class="mt-3 d-flex gap-2">
+      <input type="text" id="msgInput" class="form-control" placeholder="Escribe tu mensaje..." autocomplete="off" style="border-radius:50px">
+      <button id="btnEnviar" class="btn btn-pe px-4" style="border-radius:50px">
+        <i class="bi bi-send-fill"></i>
+      </button>
+    </div>
+    {% else %}
+    <div class="alert alert-secondary mt-3 rounded-4 text-center">
+      <i class="bi bi-check-circle me-1"></i> Conversación cerrada.
+      <a href="{% url 'chat_cliente' %}" class="btn btn-sm btn-outline-dark ms-3 rounded-pill">Nuevo chat</a>
+    </div>
+    {% endif %}
+    {% endif %}
+
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const csrfToken = "{{ csrf_token }}";
+
+{% if not conv %}
+// ── Formulario anónimo ────────────────────────────────────────────────────────
+document.getElementById('btnIniciar').addEventListener('click', () => {
+  const nombre   = document.getElementById('visitNombre').value.trim();
+  const telefono = document.getElementById('visitTelefono').value.trim();
+  const email    = document.getElementById('visitEmail').value.trim();
+  const errEl    = document.getElementById('formError');
+
+  if (!nombre) {
+    errEl.textContent = 'Por favor escribe tu nombre.';
+    errEl.classList.remove('d-none');
+    return;
+  }
+  errEl.classList.add('d-none');
+  document.getElementById('btnIniciar').disabled = true;
+
+  fetch("{% url 'chat_iniciar_anonimo' %}", {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrfToken},
+    body: `nombre=${encodeURIComponent(nombre)}&telefono=${encodeURIComponent(telefono)}&email=${encodeURIComponent(email)}`,
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      // Guardar conv_id en sessionStorage como respaldo
+      sessionStorage.setItem('chat_conv_id', data.conv_id);
+      window.location.href = "{% url 'chat_cliente' %}";
+    }
+  });
+});
+
+{% else %}
+// ── Chat activo ───────────────────────────────────────────────────────────────
+const convId     = {{ conv.id }};
+const urlEnviar  = "{% url 'chat_enviar' %}";
+const urlPolling = "{% url 'chat_mensajes_nuevos' conv.id %}";
+let ultimoTs = Date.now();
+
+function agregarMensaje(origen, texto, hora) {
+  const box = document.getElementById('chatBox');
+  if (origen === 'sistema') {
+    const el = document.createElement('div');
+    el.className = 'burbuja sistema';
+    el.textContent = texto;
+    box.appendChild(el);
+  } else {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = `display:flex;flex-direction:column;align-items:${origen==='cliente'?'flex-end':'flex-start'}`;
+    const label = document.createElement('span');
+    label.className = 'origen-label';
+    label.textContent = (origen==='cliente'?'Tú':'Asesor PapeExpress') + ' · ' + hora;
+    const burbuja = document.createElement('div');
+    burbuja.className = `burbuja ${origen}`;
+    burbuja.textContent = texto;
+    wrap.appendChild(label);
+    wrap.appendChild(burbuja);
+    box.appendChild(wrap);
+  }
+  box.scrollTop = box.scrollHeight;
+}
+
+function enviar() {
+  const input = document.getElementById('msgInput');
+  const texto = input.value.trim();
+  if (!texto) return;
+  input.value = ''; input.disabled = true;
+  fetch(urlEnviar, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrfToken},
+    body: `conv_id=${convId}&texto=${encodeURIComponent(texto)}`,
+  })
+  .then(r => r.json())
+  .then(data => { if (data.ok) agregarMensaje('cliente', data.msg.texto, data.msg.hora); })
+  .finally(() => { input.disabled = false; input.focus(); });
+}
+
+function polling() {
+  fetch(`${urlPolling}?desde=${ultimoTs}`)
+    .then(r => r.json())
+    .then(data => {
+      data.mensajes.forEach(m => {
+        if (m.origen !== 'cliente') agregarMensaje(m.origen, m.texto, m.hora);
+        ultimoTs = Date.now();
+      });
+      const pill = document.getElementById('estadoPill');
+      if (data.estado === 'atendida' && pill.className.includes('abierta')) {
+        pill.className = 'estado-pill estado-atendida';
+        pill.textContent = '🟢 Agente conectado';
+      }
+    }).catch(()=>{});
+}
+
+document.getElementById('btnEnviar')?.addEventListener('click', enviar);
+document.getElementById('msgInput')?.addEventListener('keydown', e => {
+  if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); enviar(); }
+});
+document.getElementById('chatBox').scrollTop = 9999;
+setInterval(polling, 4000);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState==='visible') polling();
+});
+{% endif %}
+</script>
+{% endblock %}

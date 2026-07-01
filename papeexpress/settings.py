@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'calculadora',
     'pos',
     'cotizaciones',
+    'chat',
 ]
 
 MIDDLEWARE = [
@@ -117,6 +118,10 @@ STRIPE_PUBLIC_KEY     = config('STRIPE_PUBLIC_KEY',     default='')
 STRIPE_SECRET_KEY     = config('STRIPE_SECRET_KEY',     default='')
 STRIPE_WEBHOOK_SECRET = config('STRIPE_WEBHOOK_SECRET', default='')
 
+# ── Sesiones ─────────────────────────────────────────────
+SESSION_SAVE_EVERY_REQUEST = True  # garantiza que la sesión anónima se guarde siempre
+
 # ── Anthropic API ────────────────────────────────────────
 import os
-os.environ.setdefault('ANTHROPIC_API_KEY', config('ANTHROPIC_API_KEY', default=''))
+ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
+os.environ.setdefault('ANTHROPIC_API_KEY', ANTHROPIC_API_KEY)

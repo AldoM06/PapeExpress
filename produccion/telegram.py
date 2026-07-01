@@ -228,6 +228,35 @@ def notificar_verificacion_pendiente(usuario):
     t.start()
 
 
+def notificar_mensaje_chat(conversacion, mensaje_texto, nombre_cliente) -> int | None:
+    """
+    Notifica un nuevo mensaje de chat al grupo de Telegram.
+    Retorna el message_id del mensaje enviado (para poder linkear respuestas).
+    """
+    token   = getattr(settings, 'TELEGRAM_BOT_TOKEN', '')
+    chat_id = getattr(settings, 'TELEGRAM_CHAT_ID', '')
+    site_url = getattr(settings, 'SITE_URL', 'https://papeexpress.com')
+    if not token or not chat_id:
+        return None
+
+    texto = (
+        f"💬 <b>PapeExpress — Chat en vivo</b>\n\n"
+        f"👤 <b>{nombre_cliente}</b> escribió:\n"
+        f'<i>"{mensaje_texto}"</i>\n\n'
+        f"🔗 <a href='{site_url}/chat/agentes/{conversacion.id}/'>Responder en el panel</a>\n\n"
+        f"<b>O responde a este mensaje directamente desde Telegram.</b>"
+    )
+    result = _api_post('sendMessage', {
+        'chat_id': chat_id,
+        'text': texto,
+        'parse_mode': 'HTML',
+        'disable_web_page_preview': True,
+    })
+    if result.get('ok'):
+        return result['result']['message_id']
+    return None
+
+
 def notificar_pago_confirmado(pedido):
     msg = (
         f"💳 <b>PaPeExpress — Pago confirmado ✅</b>\n\n"

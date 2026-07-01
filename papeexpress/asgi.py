@@ -8,13 +8,15 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'papeexpress.settings')
 
 import produccion.routing
 import calculadora.routing
+import chat.routing
 
 application = ProtocolTypeRouter({
     'http': get_asgi_application(),
     'websocket': AuthMiddlewareStack(
         URLRouter(
             produccion.routing.websocket_urlpatterns +
-            calculadora.routing.websocket_urlpatterns
+            calculadora.routing.websocket_urlpatterns +
+            chat.routing.websocket_urlpatterns
         )
     ),
 })
