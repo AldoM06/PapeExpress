@@ -90,6 +90,7 @@
         <div class="small opacity-70">{{ ventas|length }} transacciones</div>
       </div>
     </div>
+    {% if ver_ganancia %}
     <div class="col-6 col-md-3">
       <div class="kpi kpi-ganancia">
         <div class="small opacity-80 fw-600">Ganancia del día</div>
@@ -103,6 +104,20 @@
         <div class="kpi-num">${{ total_costo|floatformat:2 }}</div>
       </div>
     </div>
+    {% else %}
+    <div class="col-6 col-md-3">
+      <div class="kpi" style="background:linear-gradient(135deg,#e9ecef,#dee2e6);color:#555">
+        <div class="small opacity-80 fw-600">Descuentos</div>
+        <div class="kpi-num">${{ total_descuentos|floatformat:2 }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="kpi" style="background:linear-gradient(135deg,#e9ecef,#dee2e6);color:#555">
+        <div class="small opacity-80 fw-600">Transacciones</div>
+        <div class="kpi-num">{{ ventas|length }}</div>
+      </div>
+    </div>
+    {% endif %}
     <div class="col-6 col-md-3">
       <div class="kpi kpi-num-tx">
         <div class="small opacity-80 fw-600">Descuentos</div>
@@ -130,8 +145,9 @@
                 <th>Forma pago</th>
                 <th class="text-end">Descuento</th>
                 <th class="text-end">Total</th>
-                <th class="text-end">Ganancia</th>
+                {% if ver_ganancia %}<th class="text-end">Ganancia</th>{% endif %}
                 <th>Hora</th>
+                <th></th>
               </tr>
             </thead>
             <tbody id="tablaVentas">
@@ -146,8 +162,14 @@
                 </td>
                 <td class="text-end text-muted">${{ v.descuento|floatformat:2 }}</td>
                 <td class="text-end fw-700 text-success">${{ v.total|floatformat:2 }}</td>
-                <td class="text-end fw-600" style="color:#00A846">${{ v.ganancia|floatformat:2 }}</td>
+                {% if ver_ganancia %}<td class="text-end fw-600" style="color:#00A846">${{ v.ganancia|floatformat:2 }}</td>{% endif %}
                 <td class="text-muted small">{{ v.creado|date:"H:i" }}</td>
+                <td onclick="event.stopPropagation()">
+                  <button class="btn btn-sm btn-outline-danger rounded-pill" style="font-size:.65rem;padding:.15rem .5rem"
+                    onclick="solicitarCancelacion({{ v.id }},'{{ v.folio }}',{{ v.total }})">
+                    Cancelar
+                  </button>
+                </td>
               </tr>
               <!-- Detalle expandible -->
               <tr id="det-{{ v.id }}" class="detalle-row d-none">
@@ -222,6 +244,42 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Modal cancelación -->
+<div class="modal fade" id="modalCancelar" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0">
+      <div class="modal-header border-0" style="background:#dc2626;color:#fff;border-radius:16px 16px 0 0">
+        <h5 class="modal-title fw-900">🚫 Cancelar venta</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <p class="mb-1 text-muted small">Folio: <strong id="canFolio"></strong></p>
+        <p class="mb-3 text-muted small">Total: <strong id="canTotal" class="text-success"></strong></p>
+        <div id="canMsgError" class="alert alert-danger d-none py-2 small"></div>
+        <label class="fw-700 mb-1 small">PIN de supervisor / gerente</label>
+        <input type="password" id="canPin" class="form-control form-control-lg rounded-3 text-center"
+               placeholder="••••••" maxlength="20" autocomplete="off"
+               style="letter-spacing:.3em;font-size:1.4rem">
+        <div class="text-muted small mt-2">
+          Ingresa la contraseña de un gerente o administrador.
+          Si no hay supervisor en el local, usa el botón de abajo para solicitar autorización por Telegram.
+        </div>
+        <div id="canTelegramWrap" class="mt-3 d-none">
+          <div class="alert alert-info py-2 small mb-2" id="canTelegramMsg"></div>
+        </div>
+      </div>
+      <div class="modal-footer border-0 pt-0 pb-4 px-4 gap-2 flex-wrap">
+        <button class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cerrar</button>
+        <button class="btn btn-outline-primary rounded-pill" onclick="pedirTelegram()" id="btnTelegram">
+          📱 Autorizar por Telegram
+        </button>
+        <button class="btn btn-danger rounded-pill fw-700" onclick="confirmarCancelacion()" id="btnConfirmarCan">
+          Confirmar cancelación
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
 function toggleDetalle(id) {
   const row = document.getElementById('det-' + id);
@@ -229,6 +287,73 @@ function toggleDetalle(id) {
   const isOpen = !row.classList.contains('d-none');
   row.classList.toggle('d-none', isOpen);
   ico.className = isOpen ? 'bi bi-chevron-right' : 'bi bi-chevron-down text-primary';
+}
+
+let canVentaId = null;
+
+function solicitarCancelacion(id, folio, total) {
+  canVentaId = id;
+  document.getElementById('canFolio').textContent = folio;
+  document.getElementById('canTotal').textContent = '$' + parseFloat(total).toFixed(2);
+  document.getElementById('canPin').value = '';
+  document.getElementById('canMsgError').classList.add('d-none');
+  document.getElementById('canTelegramWrap').classList.add('d-none');
+  new bootstrap.Modal(document.getElementById('modalCancelar')).show();
+  setTimeout(() => document.getElementById('canPin').focus(), 400);
+}
+
+function confirmarCancelacion() {
+  const pin = document.getElementById('canPin').value.trim();
+  if (!pin) { mostrarErrorCan('Ingresa el PIN del supervisor.'); return; }
+  const btn = document.getElementById('btnConfirmarCan');
+  btn.disabled = true; btn.textContent = 'Cancelando…';
+
+  fetch('/pos/ventas/' + canVentaId + '/cancelar/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+    body: JSON.stringify({ pin })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('modalCancelar')).hide();
+      location.reload();
+    } else {
+      mostrarErrorCan(d.error || 'PIN incorrecto o sin permisos.');
+    }
+  })
+  .finally(() => { btn.disabled = false; btn.textContent = 'Cancelar venta'; });
+}
+
+function pedirTelegram() {
+  const btn = document.getElementById('btnTelegram');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+
+  fetch('/pos/ventas/' + canVentaId + '/solicitar-cancelacion-telegram/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+    body: JSON.stringify({})
+  })
+  .then(r => r.json())
+  .then(d => {
+    const wrap = document.getElementById('canTelegramWrap');
+    const msg  = document.getElementById('canTelegramMsg');
+    wrap.classList.remove('d-none');
+    msg.textContent = d.ok
+      ? '✅ Solicitud enviada por Telegram. Cuando el gerente apruebe, recarga esta página.'
+      : ('❌ ' + (d.error || 'No se pudo enviar.'));
+  })
+  .finally(() => { btn.disabled = false; btn.textContent = '📱 Pedir auth. por Telegram'; });
+}
+
+function mostrarErrorCan(msg) {
+  const el = document.getElementById('canMsgError');
+  el.textContent = msg; el.classList.remove('d-none');
+}
+
+function getCsrf() {
+  return document.cookie.split(';').map(c => c.trim())
+    .find(c => c.startsWith('csrftoken='))?.split('=')[1] || '';
 }
 </script>
 {% endblock %}

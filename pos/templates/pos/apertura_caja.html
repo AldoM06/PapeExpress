@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Apertura de caja{% endblock %}
+{% block extra_css %}
+<style>
+body { background:#0d0d1e; }
+.card-caja {
+  max-width:420px; margin:10vh auto;
+  background:#fff; border-radius:24px;
+  box-shadow:0 8px 40px rgba(0,0,0,.25);
+  padding:2.5rem;
+}
+.monto-input {
+  font-size:2rem; font-weight:900; text-align:center;
+  border:none; border-bottom:3px solid #FF0080;
+  width:100%; outline:none; color:#0d0d1e;
+  padding:.5rem 0; background:transparent;
+}
+.monto-input:focus { border-color:#FF0080; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card-caja text-center">
+  <div style="font-size:3rem">🏪</div>
+  <h2 class="fw-900 mt-2 mb-1" style="font-family:'Playfair Display',serif">Apertura de caja</h2>
+  <p class="text-muted mb-4">{{ sucursal.nombre }} — {{ "now"|date:"d/m/Y" }}</p>
+
+  <form method="post">
+    {% csrf_token %}
+    <label class="fw-700 text-muted small d-block mb-2">¿Cuánto efectivo hay de cambio al iniciar?</label>
+    <div class="input-group mb-3 justify-content-center">
+      <span class="input-group-text fw-700" style="font-size:1.4rem;border:none;background:transparent">$</span>
+      <input type="number" name="cambio_inicial" class="monto-input" value="0" min="0" step="0.01" autofocus>
+    </div>
+    <p class="text-muted small mb-4">Este monto es el "cambio" inicial que ya tenías en caja antes de abrir.</p>
+    <button type="submit" class="btn w-100 fw-700 rounded-pill py-3" style="background:#FF0080;color:#fff;font-size:1.1rem">
+      Abrir caja →
+    </button>
+    <a href="{% url 'dashboard_sucursal' %}" class="btn btn-link text-muted mt-2 d-block">Omitir por ahora</a>
+  </form>
+</div>
+{% endblock %}

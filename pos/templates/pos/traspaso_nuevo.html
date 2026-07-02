@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% block title %}Nuevo traspaso{% endblock %}
+
+{% block extra_css %}
+<style>
+.pos-hero { background:linear-gradient(135deg,#0d0d1e,#1e0d12); padding:7rem 0 2.5rem; color:#fff; }
+.sec-card  { background:#fff; border-radius:20px; box-shadow:0 4px 20px rgba(0,0,0,.07); }
+.prod-row  { display:flex; align-items:center; gap:.75rem; padding:.6rem .75rem; border-radius:10px; background:#f8fafc; margin-bottom:.4rem; }
+.prod-row .nombre { flex:1; font-weight:700; font-size:.85rem; }
+.prod-row .stock-tag { font-size:.72rem; color:#64748b; }
+.cant-input { width:70px; border:1px solid #e2e8f0; border-radius:8px; padding:.25rem .4rem; font-size:.85rem; font-weight:700; text-align:right; }
+.cant-input:focus { outline:none; border-color:#FF0080; box-shadow:0 0 0 3px rgba(255,0,128,.12); }
+.btn-quitar { border:none; background:none; color:#ef4444; font-size:1.1rem; cursor:pointer; padding:0 .3rem; }
+.buscar-input { border:1px solid #e2e8f0; border-radius:10px; padding:.5rem .9rem; width:100%; font-size:.88rem; }
+.buscar-input:focus { outline:none; border-color:#FF0080; }
+.sugerencia-item { padding:.45rem .75rem; cursor:pointer; font-size:.85rem; border-bottom:1px solid #f1f5f9; }
+.sugerencia-item:hover { background:#f0f9ff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-hero">
+  <div class="container-fluid px-4">
+    <span class="section-label">POS</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;">
+      📦 Nuevo traspaso
+    </h1>
+    <p style="color:rgba(255,255,255,.6)">Solicita el envío de productos de una sucursal a otra</p>
+  </div>
+</div>
+
+<section style="padding:2rem 0;background:#f4f6f9;min-height:60vh;">
+<div class="container-fluid px-4">
+
+{% if errores %}
+<div class="alert alert-danger rounded-3 mb-3">
+  {% for e in errores %}<div>⚠️ {{ e }}</div>{% endfor %}
+</div>
+{% endif %}
+
+<form method="post" id="formTraspaso">
+{% csrf_token %}
+
+<div class="row g-4">
+  <!-- Columna izquierda: sucursales + buscador -->
+  <div class="col-lg-5">
+    <div class="sec-card p-4 mb-4">
+      <h6 class="fw-700 mb-3">Origen y destino</h6>
+      <div class="mb-3">
+        <label class="form-label fw-700 small">Sucursal ORIGEN (de donde sale)</label>
+        <select name="sucursal_origen" id="selOrigen" class="form-select form-select-sm rounded-pill" required>
+          <option value="">— Elegir sucursal —</option>
+          {% for s in sucursales %}
+          <option value="{{ s.id }}" {% if sucursal_user and sucursal_user.id == s.id %}selected{% endif %}>{{ s.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-700 small">Sucursal DESTINO (a donde llega)</label>
+        <select name="sucursal_destino" id="selDestino" class="form-select form-select-sm rounded-pill" required>
+          <option value="">— Elegir sucursal —</option>
+          {% for s in sucursales %}
+          <option value="{{ s.id }}">{{ s.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label fw-700 small">Notas (opcional)</label>
+        <textarea name="notas" class="form-control form-control-sm" rows="2" placeholder="Ej: llevar con el chofer de la tarde"></textarea>
+      </div>
+    </div>
+
+    <!-- Buscador de productos -->
+    <div class="sec-card p-4">
+      <h6 class="fw-700 mb-3">Buscar producto del origen</h6>
+      <input type="text" id="buscarProd" class="buscar-input" placeholder="🔍  Nombre o código..." autocomplete="off">
+      <div id="sugerencias" class="mt-1 border rounded-3 bg-white" style="display:none;max-height:260px;overflow-y:auto"></div>
+      <p class="text-muted small mt-2 mb-0">Selecciona una sucursal origen primero para ver su stock disponible.</p>
+    </div>
+  </div>
+
+  <!-- Columna derecha: productos agregados -->
+  <div class="col-lg-7">
+    <div class="sec-card p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-700 mb-0">Productos a traspasar</h6>
+        <span id="totalProds" class="badge bg-dark rounded-pill">0 productos</span>
+      </div>
+
+      <div id="listaProductos">
+        <p class="text-muted text-center py-4" id="emptyMsg">Agrega productos desde el buscador de la izquierda.</p>
+      </div>
+
+      <!-- Inputs hidden que se envían al form -->
+      <div id="inputsHidden"></div>
+
+      <div class="mt-4 d-flex gap-2 justify-content-end">
+        <a href="{% url 'traspasos_lista' %}" class="btn btn-outline-dark rounded-pill">Cancelar</a>
+        <button type="submit" class="btn rounded-pill fw-700 px-4" style="background:#FF0080;color:#fff">
+          Solicitar traspaso →
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</form>
+</div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+let productos = {}; // {id: {id, nombre, codigo, stock, cantidad}}
+
+const selOrigen   = document.getElementById('selOrigen');
+const buscarInput = document.getElementById('buscarProd');
+const sugerencias = document.getElementById('sugerencias');
+let timer = null;
+
+selOrigen.addEventListener('change', () => {
+  buscarInput.value = '';
+  sugerencias.style.display = 'none';
+});
+
+buscarInput.addEventListener('input', () => {
+  clearTimeout(timer);
+  const q      = buscarInput.value.trim();
+  const sucId  = selOrigen.value;
+  if (!sucId) { alert('Elige primero la sucursal origen.'); buscarInput.value = ''; return; }
+  if (q.length < 2) { sugerencias.style.display = 'none'; return; }
+  timer = setTimeout(() => {
+    fetch(`/pos/api/traspaso-productos/?sucursal=${sucId}&q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(d => {
+        if (!d.productos.length) { sugerencias.style.display = 'none'; return; }
+        sugerencias.innerHTML = d.productos.map(p =>
+          `<div class="sugerencia-item" data-id="${p.id}" data-nombre="${p.nombre}" data-stock="${p.stock}" data-codigo="${p.codigo}" data-unidad="${p.unidad}">
+            <strong>${p.nombre}</strong> <span class="text-muted" style="font-size:.75rem">${p.codigo}</span>
+            <span class="float-end text-success fw-700" style="font-size:.75rem">Stock: ${p.stock}</span>
+          </div>`
+        ).join('');
+        sugerencias.style.display = 'block';
+        sugerencias.querySelectorAll('.sugerencia-item').forEach(el => {
+          el.addEventListener('click', () => {
+            agregarProducto({
+              id:     el.dataset.id,
+              nombre: el.dataset.nombre,
+              codigo: el.dataset.codigo,
+              stock:  parseFloat(el.dataset.stock),
+              unidad: el.dataset.unidad,
+            });
+            buscarInput.value = '';
+            sugerencias.style.display = 'none';
+          });
+        });
+      });
+  }, 300);
+});
+
+document.addEventListener('click', e => {
+  if (!sugerencias.contains(e.target) && e.target !== buscarInput)
+    sugerencias.style.display = 'none';
+});
+
+function agregarProducto(p) {
+  if (productos[p.id]) {
+    document.getElementById(`cant_${p.id}`)?.focus();
+    return;
+  }
+  productos[p.id] = { ...p, cantidad: 1 };
+  renderLista();
+}
+
+function quitarProducto(id) {
+  delete productos[id];
+  renderLista();
+}
+
+function renderLista() {
+  const ids    = Object.keys(productos);
+  const lista  = document.getElementById('listaProductos');
+  const hidden = document.getElementById('inputsHidden');
+  const empty  = document.getElementById('emptyMsg');
+  document.getElementById('totalProds').textContent = `${ids.length} producto${ids.length !== 1 ? 's' : ''}`;
+
+  if (!ids.length) {
+    lista.innerHTML = '<p class="text-muted text-center py-4" id="emptyMsg">Agrega productos desde el buscador de la izquierda.</p>';
+    hidden.innerHTML = '';
+    return;
+  }
+
+  lista.innerHTML = ids.map(id => {
+    const p = productos[id];
+    return `
+    <div class="prod-row">
+      <div>
+        <div class="nombre">${p.nombre}</div>
+        <div class="stock-tag">${p.codigo} · Stock disponible: ${p.stock} ${p.unidad}</div>
+      </div>
+      <input type="number" id="cant_${id}" class="cant-input" value="${p.cantidad}"
+             min="0.01" max="${p.stock}" step="0.01"
+             onchange="productos['${id}'].cantidad = parseFloat(this.value)||1; actualizarHidden()">
+      <span class="stock-tag">${p.unidad}</span>
+      <button type="button" class="btn-quitar" onclick="quitarProducto('${id}')">✕</button>
+    </div>`;
+  }).join('');
+
+  actualizarHidden();
+}
+
+function actualizarHidden() {
+  const hidden = document.getElementById('inputsHidden');
+  hidden.innerHTML = Object.values(productos).map(p =>
+    `<input type="hidden" name="producto_id" value="${p.id}">
+     <input type="hidden" name="cantidad" value="${document.getElementById('cant_'+p.id)?.value || p.cantidad}">`
+  ).join('');
+}
+
+document.getElementById('formTraspaso').addEventListener('submit', e => {
+  if (!Object.keys(productos).length) {
+    e.preventDefault();
+    alert('Agrega al menos un producto antes de solicitar el traspaso.');
+  }
+});
+</script>
+{% endblock %}

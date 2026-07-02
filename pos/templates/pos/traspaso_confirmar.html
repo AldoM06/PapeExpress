@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% block title %}
+  {% if accion == 'aprobar' %}Aprobar traspaso{% elif accion == 'recibir' %}Confirmar recepción{% else %}Cancelar traspaso{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.pos-hero { background:linear-gradient(135deg,#0d0d1e,#1e0d12); padding:7rem 0 2.5rem; color:#fff; }
+.sec-card  { background:#fff; border-radius:20px; box-shadow:0 4px 20px rgba(0,0,0,.07); }
+.cant-input { width:80px; border:1px solid #e2e8f0; border-radius:8px; padding:.3rem .5rem; font-size:.9rem; font-weight:700; text-align:right; }
+.cant-input:focus { outline:none; border-color:#FF0080; box-shadow:0 0 0 3px rgba(255,0,128,.12); }
+.prod-fila { display:flex; align-items:center; gap:1rem; padding:.7rem 0; border-bottom:1px solid #f1f5f9; }
+.prod-fila:last-child { border-bottom:none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-hero">
+  <div class="container-fluid px-4">
+    <span class="section-label">POS</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;">
+      {% if accion == 'aprobar' %}✅ Aprobar traspaso
+      {% elif accion == 'recibir' %}🏁 Confirmar recepción
+      {% else %}❌ Cancelar traspaso{% endif %}
+    </h1>
+    <p style="color:rgba(255,255,255,.6)">Folio: <strong>{{ traspaso.folio }}</strong></p>
+  </div>
+</div>
+
+<section style="padding:2rem 0;background:#f4f6f9;min-height:60vh;">
+<div class="container-fluid px-4">
+<div class="row justify-content-center">
+<div class="col-lg-7">
+
+  <!-- Info del traspaso -->
+  <div class="sec-card p-4 mb-4">
+    <div class="d-flex gap-4 flex-wrap mb-3">
+      <div>
+        <div class="text-muted small">Origen</div>
+        <div class="fw-700">🏪 {{ traspaso.sucursal_origen.nombre }}</div>
+      </div>
+      <div style="font-size:1.5rem;align-self:center">→</div>
+      <div>
+        <div class="text-muted small">Destino</div>
+        <div class="fw-700">🏪 {{ traspaso.sucursal_destino.nombre }}</div>
+      </div>
+      <div class="ms-auto">
+        <div class="text-muted small">Solicitado por</div>
+        <div class="fw-700">{{ traspaso.solicitado_por.get_full_name|default:traspaso.solicitado_por.username }}</div>
+        <div class="text-muted small">{{ traspaso.creado|date:"d/m/Y H:i" }}</div>
+      </div>
+    </div>
+    {% if traspaso.notas %}
+    <div class="alert alert-light rounded-3 mb-0" style="font-size:.85rem">📝 {{ traspaso.notas }}</div>
+    {% endif %}
+  </div>
+
+  <!-- Productos -->
+  <div class="sec-card p-4 mb-4">
+    <h6 class="fw-700 mb-3">Productos</h6>
+    <form method="post">
+      {% csrf_token %}
+
+      {% for det in traspaso.detalles.all %}
+      <div class="prod-fila">
+        <div style="flex:1">
+          <div class="fw-700">{{ det.producto.nombre }}</div>
+          <div class="text-muted small">{{ det.producto.codigo }}</div>
+        </div>
+
+        {% if accion == 'recibir' %}
+        <div class="text-center">
+          <div class="text-muted small mb-1">Solicitado</div>
+          <span class="fw-700">{{ det.cantidad|floatformat:0 }}</span>
+        </div>
+        <div class="text-center">
+          <div class="text-muted small mb-1">Recibido</div>
+          <input type="number" name="cant_{{ det.id }}" class="cant-input"
+                 value="{{ det.cantidad|floatformat:2 }}" min="0" step="0.01"
+                 max="{{ det.cantidad|floatformat:2 }}">
+        </div>
+        {% else %}
+        <div class="text-center">
+          <div class="text-muted small mb-1">Cantidad</div>
+          <span class="fw-700 fs-5">{{ det.cantidad|floatformat:0 }}</span>
+          <span class="text-muted small">{{ det.producto.unidad }}</span>
+        </div>
+        {% if accion == 'aprobar' %}
+        <div class="text-end">
+          <div class="text-muted small mb-1">Costo unit.</div>
+          <span class="fw-700">${{ det.costo_unitario|floatformat:2 }}</span>
+        </div>
+        {% endif %}
+        {% endif %}
+      </div>
+      {% endfor %}
+
+      {% if accion == 'aprobar' %}
+      <!-- Resumen financiero -->
+      <div class="rounded-3 p-3 mt-3 mb-3" style="background:#f0fdf4;border:1px solid #86efac">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="fw-700">💰 Total a cobrar al destino</span>
+          <span class="fw-700 fs-5" style="color:#166534">${{ traspaso.total|floatformat:2 }}</span>
+        </div>
+        <table class="table table-sm mb-0" style="font-size:.78rem">
+          <tr><th>Producto</th><th class="text-end">Cant.</th><th class="text-end">P. Traspaso</th><th class="text-end">Subtotal</th></tr>
+          {% for det in traspaso.detalles.all %}
+          <tr>
+            <td>{{ det.producto.nombre }}</td>
+            <td class="text-end">{{ det.cantidad|floatformat:0 }}</td>
+            <td class="text-end">${{ det.precio_traspaso_unit|floatformat:2 }}</td>
+            <td class="text-end">${{ det.subtotal_traspaso|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-700 small">Forma de pago</label>
+        <select name="forma_pago" class="form-select form-select-sm rounded-pill">
+          <option value="efectivo">💵 Efectivo</option>
+          <option value="transferencia">🏦 Transferencia</option>
+          <option value="credito">📋 A crédito</option>
+        </select>
+      </div>
+      <div class="alert alert-warning rounded-3 mb-0" style="font-size:.84rem">
+        ⚠️ Al aprobar se <strong>descontará el inventario</strong> de <strong>{{ traspaso.sucursal_origen.nombre }}</strong> y se registrará una <strong>venta interna</strong> por ${{ traspaso.total|floatformat:2 }}.
+      </div>
+      {% elif accion == 'recibir' %}
+      <div class="alert alert-info rounded-3 mt-3 mb-0" style="font-size:.84rem">
+        ℹ️ Ajusta las cantidades recibidas si llegaron incompletas. Al confirmar se <strong>sumará al inventario</strong> de <strong>{{ traspaso.sucursal_destino.nombre }}</strong>.
+      </div>
+      {% elif accion == 'cancelar' %}
+      <div class="alert alert-danger rounded-3 mt-3 mb-0" style="font-size:.84rem">
+        ❌ ¿Seguro que deseas cancelar este traspaso?
+        {% if traspaso.estado == 'aprobado' %}
+        El inventario de <strong>{{ traspaso.sucursal_origen.nombre }}</strong> será <strong>reintegrado</strong>.
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <div class="d-flex gap-2 justify-content-end mt-4">
+        <a href="{% url 'traspasos_lista' %}" class="btn btn-outline-dark rounded-pill">← Volver</a>
+        {% if accion == 'aprobar' %}
+        <button type="submit" class="btn rounded-pill fw-700 px-4 btn-primary">✅ Confirmar aprobación</button>
+        {% elif accion == 'recibir' %}
+        <button type="submit" class="btn rounded-pill fw-700 px-4 btn-success">🏁 Confirmar recepción</button>
+        {% else %}
+        <button type="submit" class="btn rounded-pill fw-700 px-4 btn-danger">❌ Sí, cancelar traspaso</button>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+</div>
+</div>
+</div>
+</section>
+{% endblock %}

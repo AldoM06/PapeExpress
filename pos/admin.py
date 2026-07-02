@@ -5,6 +5,7 @@ from .models import (
     ProductoPOS, PrecioPorSucursal, Inventario, MovimientoInventario,
     Venta, DetalleVenta, Abono, Anticipo,
     Proveedor, CompraProveedor, DetalleCompra, PrecioHistoricoProveedor,
+    ConfigPOS, GastoFijo, TransaccionServicio, CierreCaja,
 )
 
 
@@ -27,11 +28,25 @@ class UsuarioSucursalInline(admin.TabularInline):
     fields = ('usuario', 'rol', 'activo')
 
 
+class GastoFijoInline(admin.TabularInline):
+    model   = GastoFijo
+    extra   = 1
+    fields  = ('tipo', 'descripcion', 'monto', 'activo')
+
+
 @admin.register(Sucursal)
 class SucursalAdmin(admin.ModelAdmin):
-    list_display  = ('nombre', 'cliente', 'tipo', 'activa')
+    list_display  = ('nombre', 'cliente', 'tipo', 'telefono', 'whatsapp', 'activa')
     list_filter   = ('tipo', 'activa', 'cliente')
-    inlines       = [UsuarioSucursalInline]
+    fields        = ('cliente', 'nombre', 'tipo', 'logo', 'direccion', 'telefono', 'whatsapp', 'activa')
+    inlines       = [UsuarioSucursalInline, GastoFijoInline]
+
+
+@admin.register(GastoFijo)
+class GastoFijoAdmin(admin.ModelAdmin):
+    list_display  = ('sucursal', 'tipo', 'descripcion', 'monto', 'activo')
+    list_filter   = ('sucursal', 'tipo', 'activo')
+    list_editable = ('monto', 'activo')
 
 
 # ── PRODUCTOS ─────────────────────────────────────────────
@@ -43,9 +58,9 @@ class PrecioInline(admin.TabularInline):
 
 @admin.register(ProductoPOS)
 class ProductoPOSAdmin(admin.ModelAdmin):
-    list_display  = ('codigo', 'nombre', 'categoria', 'unidad', 'activo')
-    list_filter   = ('categoria', 'activo')
-    list_editable = ('activo',)
+    list_display  = ('codigo', 'nombre', 'categoria', 'unidad', 'favorito_pos', 'activo')
+    list_filter   = ('categoria', 'activo', 'favorito_pos')
+    list_editable = ('activo', 'favorito_pos')
     search_fields = ('nombre', 'codigo')
     inlines       = [PrecioInline]
 
@@ -141,3 +156,34 @@ class CompraProveedorAdmin(admin.ModelAdmin):
 class PrecioHistoricoAdmin(admin.ModelAdmin):
     list_display = ('proveedor', 'producto', 'costo', 'fecha')
     list_filter  = ('proveedor', 'fecha')
+
+
+# ── RECARGAS Y SERVICIOS ──────────────────────────────────
+@admin.register(TransaccionServicio)
+class TransaccionServicioAdmin(admin.ModelAdmin):
+    list_display  = ('fecha', 'sucursal', 'cajero', 'tipo', 'servicio', 'telefono', 'monto', 'comision', 'referencia')
+    list_filter   = ('tipo', 'servicio', 'sucursal', 'fecha')
+    search_fields = ('telefono', 'referencia', 'cajero__username')
+    readonly_fields = ('fecha',)
+    date_hierarchy = 'fecha'
+
+
+@admin.register(CierreCaja)
+class CierreCajaAdmin(admin.ModelAdmin):
+    list_display  = ('fecha', 'sucursal', 'estado', 'cambio_inicial', 'total_ventas_efectivo',
+                     'total_retiros', 'efectivo_esperado', 'efectivo_contado', 'diferencia')
+    list_filter   = ('estado', 'sucursal', 'fecha')
+    readonly_fields = ('apertura_en', 'cierre_en')
+    date_hierarchy = 'fecha'
+
+
+# ── CONFIGURACIÓN POS ─────────────────────────────────────
+@admin.register(ConfigPOS)
+class ConfigPOSAdmin(admin.ModelAdmin):
+    fields = ('pct_reinversion', 'whatsapp_general')
+
+    def has_add_permission(self, request):
+        return not ConfigPOS.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False

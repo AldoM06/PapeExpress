@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+{% block title %}Cierre de caja{% endblock %}
+{% block extra_css %}
+<style>
+.pos-hero { background:linear-gradient(135deg,#0d0d1e,#1e0d12); padding:7rem 0 2.5rem; color:#fff; }
+.sec-card  { background:#fff; border-radius:20px; box-shadow:0 4px 20px rgba(0,0,0,.07); }
+.kpi { text-align:center; padding:1rem; }
+.kpi .valor { font-size:1.6rem; font-weight:900; }
+.kpi .label { font-size:.72rem; color:#888; text-transform:uppercase; letter-spacing:.05em; }
+.monto-input {
+  font-size:2rem; font-weight:900; text-align:center;
+  border:none; border-bottom:3px solid #FF0080;
+  width:100%; outline:none; color:#0d0d1e;
+  padding:.5rem 0; background:transparent;
+}
+.diferencia-box {
+  border-radius:16px; padding:1.2rem 1.5rem;
+  font-size:1.1rem; font-weight:700; text-align:center;
+}
+.sobra  { background:#dcfce7; color:#166534; }
+.falta  { background:#fee2e2; color:#991b1b; }
+.exacto { background:#dbeafe; color:#1e40af; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-hero">
+  <div class="container-fluid px-4">
+    <span class="section-label">Caja</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;">🔒 Cierre de caja</h1>
+    <p style="color:rgba(255,255,255,.6)">{{ sucursal.nombre }}{% if caja %} — {{ caja.fecha|date:"d/m/Y" }}{% endif %}</p>
+  </div>
+</div>
+
+<section style="padding:2rem 0;background:#f4f6f9;min-height:60vh;">
+<div class="container-fluid px-4">
+<div class="row g-4">
+
+  <!-- Columna izquierda: resumen del día -->
+  <div class="col-lg-7">
+    <div class="sec-card p-4 mb-4">
+      <h6 class="fw-700 mb-3">Resumen del día</h6>
+      <!-- KPIs: entradas -->
+      <p class="text-muted small fw-700 mb-1" style="text-transform:uppercase;letter-spacing:.05em">Entradas de efectivo</p>
+      <div class="row g-3 mb-3">
+        <div class="col-6 col-md-4">
+          <div class="kpi" style="background:#f0fdf4;border-radius:12px">
+            <div class="valor" style="color:#166534">${{ cambio_inicial|floatformat:2 }}</div>
+            <div class="label">Cambio inicial</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4">
+          <div class="kpi" style="background:#dbeafe;border-radius:12px">
+            <div class="valor" style="color:#1e40af">${{ total_ventas_efectivo|floatformat:2 }}</div>
+            <div class="label">Ventas mercancía</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-4">
+          <div class="kpi" style="background:#fdf4ff;border-radius:12px">
+            <div class="valor" style="color:#7e22ce">${{ total_monto_servicios|floatformat:2 }}</div>
+            <div class="label">Recargas / servicios</div>
+          </div>
+        </div>
+      </div>
+      <!-- Sub-detalle comisiones -->
+      {% if total_monto_servicios %}
+      <div class="d-flex gap-2 align-items-center mb-3 px-1" style="font-size:.78rem;color:#64748b">
+        <span>📱 De esos, tu comisión:</span>
+        <span class="fw-700" style="color:#166534">${{ total_comisiones|floatformat:2 }}</span>
+        <span class="text-muted">(el resto se entrega al proveedor)</span>
+      </div>
+      {% endif %}
+
+      <!-- KPIs: salidas -->
+      <p class="text-muted small fw-700 mb-1" style="text-transform:uppercase;letter-spacing:.05em">Salidas de efectivo</p>
+      <div class="row g-3 mb-3">
+        <div class="col-6">
+          <div class="kpi" style="background:#fef9c3;border-radius:12px">
+            <div class="valor" style="color:#713f12">${{ total_retiros|floatformat:2 }}</div>
+            <div class="label">Retiros</div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="kpi" style="background:#fee2e2;border-radius:12px">
+            <div class="valor" style="color:#991b1b">${{ total_gastos_efectivo|floatformat:2 }}</div>
+            <div class="label">Gastos día</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-dark rounded-3 d-flex justify-content-between align-items-center mb-0">
+        <span class="fw-700">💰 Efectivo esperado en caja</span>
+        <span class="fw-900 fs-5">${{ efectivo_esperado|floatformat:2 }}</span>
+      </div>
+      <div class="text-muted small mt-2" style="font-size:.72rem">
+        Fórmula: cambio (${{ cambio_inicial|floatformat:2 }}) + mercancía (${{ total_ventas_efectivo|floatformat:2 }}) + recargas/servicios (${{ total_monto_servicios|floatformat:2 }}) − retiros (${{ total_retiros|floatformat:2 }}) − gastos (${{ total_gastos_efectivo|floatformat:2 }})
+      </div>
+    </div>
+
+    <!-- Retiros del día -->
+    {% if retiros %}
+    <div class="sec-card p-4 mb-4">
+      <h6 class="fw-700 mb-3">Retiros del día</h6>
+      <table class="table table-sm mb-0" style="font-size:.82rem">
+        <thead><tr><th>Hora</th><th>Motivo</th><th>Usuario</th><th class="text-end">Monto</th></tr></thead>
+        <tbody>
+          {% for r in retiros %}
+          <tr>
+            <td>{{ r.fecha|date:"H:i" }}</td>
+            <td>{{ r.motivo }}</td>
+            <td>{{ r.usuario.get_full_name|default:r.usuario.username }}</td>
+            <td class="text-end fw-700 text-danger">−${{ r.monto|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- Gastos del día -->
+    {% if gastos_hoy %}
+    <div class="sec-card p-4 mb-4">
+      <h6 class="fw-700 mb-3">Gastos operativos del día</h6>
+      <table class="table table-sm mb-0" style="font-size:.82rem">
+        <thead><tr><th>Descripción</th><th class="text-end">Monto</th></tr></thead>
+        <tbody>
+          {% for g in gastos_hoy %}
+          <tr><td>{{ g.descripcion }}</td><td class="text-end text-danger">−${{ g.monto|floatformat:2 }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <!-- Recargas y servicios del día -->
+    <div class="sec-card p-4 mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-700 mb-0">📱 Recargas y servicios del día</h6>
+        <a href="{% url 'servicios_pos' %}" class="btn btn-sm btn-outline-dark rounded-pill" style="font-size:.72rem">+ Agregar</a>
+      </div>
+      {% if servicios_hoy %}
+      <table class="table table-sm mb-2" style="font-size:.82rem">
+        <thead>
+          <tr>
+            <th>Hora</th>
+            <th>Tipo</th>
+            <th>Detalle</th>
+            <th class="text-end">Monto</th>
+            <th class="text-end" style="color:#166534">Comisión</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in servicios_hoy %}
+          <tr>
+            <td>{{ s.fecha|date:"H:i" }}</td>
+            <td>
+              {% if s.tipo == 'recarga' %}
+                <span style="font-size:.7rem;background:#dbeafe;color:#1e40af;border-radius:50px;padding:.1rem .45rem;font-weight:700">📱 Recarga</span>
+              {% else %}
+                <span style="font-size:.7rem;background:#f3e8ff;color:#5b21b6;border-radius:50px;padding:.1rem .45rem;font-weight:700">🧾 {{ s.get_servicio_display }}</span>
+              {% endif %}
+            </td>
+            <td class="text-muted">
+              {% if s.telefono %}{{ s.telefono }}{% endif %}
+              {% if s.referencia %}{{ s.referencia }}{% endif %}
+            </td>
+            <td class="text-end fw-700">${{ s.monto|floatformat:2 }}</td>
+            <td class="text-end fw-700" style="color:#166534">+${{ s.comision|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="d-flex justify-content-end gap-3 pt-2 border-top" style="font-size:.83rem">
+        <span class="text-muted">Total comisiones:</span>
+        <span class="fw-900" style="color:#166534">${{ total_comisiones|floatformat:2 }}</span>
+      </div>
+      {% else %}
+      <p class="text-muted text-center py-3 mb-0" style="font-size:.83rem">Sin recargas ni servicios registrados hoy.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Columna derecha: conteo y cierre -->
+  <div class="col-lg-5">
+
+    {% if sin_caja %}
+    <div class="sec-card p-4 text-center">
+      <div style="font-size:2.5rem;margin-bottom:.5rem">🏪</div>
+      <h6 class="fw-700">No hay caja abierta hoy</h6>
+      <p class="text-muted small mb-3">Para hacer retiros o cerrar la caja, primero debes registrar la apertura con el cambio inicial del día.</p>
+      <a href="{% url 'apertura_caja' %}" class="btn rounded-pill fw-700 px-4" style="background:#FF0080;color:#fff">
+        Abrir caja ahora
+      </a>
+    </div>
+    {% else %}
+    <div class="sec-card p-4">
+      <h6 class="fw-700 mb-3">Conteo de efectivo</h6>
+      <form method="post" id="formCierre">
+        {% csrf_token %}
+
+        <label class="fw-700 text-muted small d-block mb-2 text-center">¿Cuánto efectivo hay físicamente en caja?</label>
+        <div class="d-flex align-items-center justify-content-center mb-3 gap-2">
+          <span style="font-size:1.8rem;font-weight:900">$</span>
+          <input type="number" name="efectivo_contado" id="efectivoContado"
+                 class="monto-input" value="" min="0" step="0.01"
+                 placeholder="0.00" autofocus>
+        </div>
+
+        <!-- Diferencia en tiempo real -->
+        <div id="diferenciaBox" class="diferencia-box mb-4" style="display:none">
+          <div id="diferenciaTexto"></div>
+        </div>
+
+        <textarea name="notas_cierre" class="form-control form-control-sm rounded-3 mb-4"
+                  rows="2" placeholder="Notas del cierre (opcional)"></textarea>
+
+        <button type="submit" class="btn w-100 fw-700 rounded-pill py-3" style="background:#0d0d1e;color:#fff;font-size:1rem">
+          🔒 Cerrar caja
+        </button>
+        <a href="{% url 'pos' %}" class="btn btn-link text-muted mt-2 d-block text-center">← Volver al POS</a>
+      </form>
+    </div>
+
+    <!-- Retiro rápido -->
+    <div class="sec-card p-4 mt-4">
+      <h6 class="fw-700 mb-3">Registrar retiro de efectivo</h6>
+      <div class="input-group mb-2">
+        <span class="input-group-text">$</span>
+        <input type="number" id="retiroMonto" class="form-control" placeholder="Monto" min="0" step="0.01">
+      </div>
+      <input type="text" id="retiroMotivo" class="form-control mb-2" placeholder="Motivo (ej: pago de renta)">
+      <button class="btn btn-sm btn-outline-dark rounded-pill w-100" onclick="registrarRetiro()">+ Registrar retiro</button>
+      <div id="retiroMsg" class="text-center small mt-2"></div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+</div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF             = '{{ csrf_token }}';
+const efectivoEsperado = {{ efectivo_esperado|floatformat:2 }};
+
+document.getElementById('efectivoContado').addEventListener('input', function() {
+  const contado = parseFloat(this.value) || 0;
+  const diff    = contado - efectivoEsperado;
+  const box     = document.getElementById('diferenciaBox');
+  const txt     = document.getElementById('diferenciaTexto');
+  box.style.display = 'block';
+  box.className = 'diferencia-box mb-4 ' + (diff > 0 ? 'sobra' : diff < 0 ? 'falta' : 'exacto');
+  if (diff > 0)      txt.innerHTML = `✅ Sobran <strong>$${diff.toFixed(2)}</strong>`;
+  else if (diff < 0) txt.innerHTML = `⚠️ Faltan <strong>$${Math.abs(diff).toFixed(2)}</strong>`;
+  else               txt.innerHTML = `✓ Cuadra perfectamente`;
+});
+
+function registrarRetiro() {
+  const monto  = document.getElementById('retiroMonto').value;
+  const motivo = document.getElementById('retiroMotivo').value.trim();
+  const msg    = document.getElementById('retiroMsg');
+  if (!monto || parseFloat(monto) <= 0) { msg.textContent = 'Ingresa un monto válido.'; return; }
+  if (!motivo) { msg.textContent = 'Ingresa el motivo.'; return; }
+
+  fetch('/pos/caja/retiro/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+    body: JSON.stringify({ monto: parseFloat(monto), motivo }),
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      msg.innerHTML = `<span class="text-success">✓ Retiro de $${parseFloat(monto).toFixed(2)} registrado</span>`;
+      document.getElementById('retiroMonto').value  = '';
+      document.getElementById('retiroMotivo').value = '';
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      msg.innerHTML = `<span class="text-danger">${d.error}</span>`;
+    }
+  });
+}
+</script>
+{% endblock %}

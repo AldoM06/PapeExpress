@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% block title %}Resumen cierre — {{ caja.sucursal.nombre }}{% endblock %}
+{% block extra_css %}
+<style>
+.pos-hero { background:linear-gradient(135deg,#0d0d1e,#1e0d12); padding:7rem 0 2.5rem; color:#fff; }
+.sec-card  { background:#fff; border-radius:20px; box-shadow:0 4px 20px rgba(0,0,0,.07); }
+.kpi { text-align:center; padding:1rem; border-radius:12px; }
+.kpi .valor { font-size:1.4rem; font-weight:900; }
+.kpi .label { font-size:.7rem; color:#888; text-transform:uppercase; letter-spacing:.05em; }
+.resultado { border-radius:20px; padding:1.5rem 2rem; text-align:center; }
+.sobra  { background:#dcfce7; color:#166534; }
+.falta  { background:#fee2e2; color:#991b1b; }
+.exacto { background:#dbeafe; color:#1e40af; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-hero">
+  <div class="container-fluid px-4">
+    <span class="section-label">Caja</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;">✅ Caja cerrada</h1>
+    <p style="color:rgba(255,255,255,.6)">{{ caja.sucursal.nombre }} — {{ caja.fecha|date:"d/m/Y" }} · Cerrada a las {{ caja.cierre_en|date:"H:i" }}</p>
+  </div>
+</div>
+
+<section style="padding:2rem 0;background:#f4f6f9;min-height:60vh;">
+<div class="container-fluid px-4">
+<div class="row g-4 justify-content-center">
+<div class="col-lg-7">
+
+  <!-- Resultado principal -->
+  {% if caja.diferencia > 0 %}
+  <div class="resultado sobra mb-4">
+    <div style="font-size:2.5rem">⚠️</div>
+    <div class="fw-700">Sobran <span style="font-size:2rem">${{ caja.diferencia|floatformat:2 }}</span></div>
+    <div class="small mt-1">El efectivo contado es mayor al esperado</div>
+  </div>
+  {% elif caja.diferencia < 0 %}
+  <div class="resultado falta mb-4">
+    <div style="font-size:2.5rem">⚠️</div>
+    <div class="fw-700">Faltan <span style="font-size:2rem">${{ caja.diferencia|floatformat:2|slice:"1:" }}</span></div>
+    <div class="small mt-1">El efectivo contado es menor al esperado</div>
+  </div>
+  {% else %}
+  <div class="resultado exacto mb-4">
+    <div style="font-size:2.5rem">🎯</div>
+    <div class="fw-700">¡Cuadra perfectamente!</div>
+    <div class="small mt-1">El efectivo contado coincide exactamente</div>
+  </div>
+  {% endif %}
+
+  <!-- KPIs -->
+  <div class="sec-card p-4 mb-4">
+    <h6 class="fw-700 mb-3">Desglose del cierre</h6>
+    <div class="row g-2 mb-3">
+      <div class="col-6 col-md-3"><div class="kpi" style="background:#f0fdf4"><div class="valor" style="color:#166534">${{ caja.cambio_inicial|floatformat:2 }}</div><div class="label">Cambio inicial</div></div></div>
+      <div class="col-6 col-md-3"><div class="kpi" style="background:#dbeafe"><div class="valor" style="color:#1e40af">${{ caja.total_ventas_efectivo|floatformat:2 }}</div><div class="label">Ventas mercancía</div></div></div>
+      <div class="col-6 col-md-3"><div class="kpi" style="background:#fdf4ff"><div class="valor" style="color:#7e22ce">${{ total_monto_servicios|floatformat:2 }}</div><div class="label">Recargas/servicios</div></div></div>
+      <div class="col-6 col-md-3"><div class="kpi" style="background:#fef9c3"><div class="valor" style="color:#713f12">${{ caja.total_retiros|floatformat:2 }}</div><div class="label">Retiros</div></div></div>
+    </div>
+
+    <table class="table table-sm mb-0" style="font-size:.85rem">
+      <tr><td class="text-muted">Efectivo esperado</td><td class="text-end fw-700">${{ caja.efectivo_esperado|floatformat:2 }}</td></tr>
+      <tr><td class="text-muted">Efectivo contado</td><td class="text-end fw-700">${{ caja.efectivo_contado|floatformat:2 }}</td></tr>
+      <tr class="fw-700 {% if caja.diferencia >= 0 %}text-success{% else %}text-danger{% endif %}">
+        <td>Diferencia</td>
+        <td class="text-end">{% if caja.diferencia >= 0 %}+{% endif %}${{ caja.diferencia|floatformat:2 }}</td>
+      </tr>
+    </table>
+
+    {% if caja.notas_cierre %}
+    <div class="alert alert-light rounded-3 mt-3 mb-0 small">📝 {{ caja.notas_cierre }}</div>
+    {% endif %}
+
+    <div class="text-muted small mt-3" style="font-size:.75rem">
+      Apertura por {{ caja.usuario_apertura.get_full_name|default:caja.usuario_apertura.username }} a las {{ caja.apertura_en|date:"H:i" }} ·
+      Cierre por {{ caja.usuario_cierre.get_full_name|default:caja.usuario_cierre.username }} a las {{ caja.cierre_en|date:"H:i" }}
+    </div>
+  </div>
+
+  <!-- Recargas y servicios del día -->
+  <div class="sec-card p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h6 class="fw-700 mb-0">📱 Recargas y servicios del día</h6>
+      {% if total_monto_servicios %}
+      <div class="text-end" style="font-size:.8rem">
+        <span class="text-muted">Comisión total:</span>
+        <span class="fw-700" style="color:#166534"> ${{ total_comisiones|floatformat:2 }}</span>
+      </div>
+      {% endif %}
+    </div>
+    {% if servicios %}
+    <table class="table table-sm mb-0" style="font-size:.82rem">
+      <thead><tr>
+        <th>Hora</th><th>Tipo</th><th>Detalle</th>
+        <th class="text-end">Monto</th><th class="text-end" style="color:#166534">Comisión</th>
+      </tr></thead>
+      <tbody>
+        {% for s in servicios %}
+        <tr>
+          <td>{{ s.fecha|date:"H:i" }}</td>
+          <td>
+            {% if s.tipo == 'recarga' %}
+              <span style="font-size:.68rem;background:#dbeafe;color:#1e40af;border-radius:50px;padding:.1rem .4rem;font-weight:700">📱 Recarga</span>
+            {% else %}
+              <span style="font-size:.68rem;background:#f3e8ff;color:#5b21b6;border-radius:50px;padding:.1rem .4rem;font-weight:700">🧾 {{ s.get_servicio_display }}</span>
+            {% endif %}
+          </td>
+          <td class="text-muted">{% if s.telefono %}{{ s.telefono }}{% endif %}{% if s.referencia %} {{ s.referencia }}{% endif %}</td>
+          <td class="text-end fw-700">${{ s.monto|floatformat:2 }}</td>
+          <td class="text-end fw-700" style="color:#166534">+${{ s.comision|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="fw-700" style="border-top:2px solid #e2e8f0">
+          <td colspan="3">Total</td>
+          <td class="text-end">${{ total_monto_servicios|floatformat:2 }}</td>
+          <td class="text-end" style="color:#166534">+${{ total_comisiones|floatformat:2 }}</td>
+        </tr>
+      </tfoot>
+    </table>
+    {% else %}
+    <p class="text-muted small text-center py-2 mb-0">Sin recargas ni servicios registrados este día.</p>
+    {% endif %}
+  </div>
+
+  <!-- Retiros del día -->
+  {% if retiros %}
+  <div class="sec-card p-4 mb-4">
+    <h6 class="fw-700 mb-3">💸 Retiros del día</h6>
+    <table class="table table-sm mb-0" style="font-size:.82rem">
+      <thead><tr><th>Hora</th><th>Motivo</th><th>Usuario</th><th class="text-end">Monto</th></tr></thead>
+      <tbody>
+        {% for r in retiros %}
+        <tr>
+          <td>{{ r.fecha|date:"H:i" }}</td>
+          <td>{{ r.motivo }}</td>
+          <td>{{ r.usuario.get_full_name|default:r.usuario.username }}</td>
+          <td class="text-end fw-700 text-danger">−${{ r.monto|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Estado de revisión -->
+  {% if caja.revisado_por %}
+  <div class="sec-card p-4 mb-4" style="border-left:4px solid #22c55e">
+    <div class="d-flex align-items-center gap-3">
+      <div style="font-size:2rem">✅</div>
+      <div>
+        <div class="fw-700" style="color:#166534">Cierre revisado y aprobado</div>
+        <div class="text-muted small">
+          Por <strong>{{ caja.revisado_por.get_full_name|default:caja.revisado_por.username }}</strong>
+          el {{ caja.revisado_en|date:"d/m/Y" }} a las {{ caja.revisado_en|date:"H:i" }}
+        </div>
+        {% if caja.notas_revision %}
+        <div class="mt-1 small" style="color:#374151">📝 {{ caja.notas_revision }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% elif puede_revisar %}
+  <div class="sec-card p-4 mb-4" style="border-left:4px solid #f59e0b">
+    <h6 class="fw-700 mb-2">🔍 Revisar y aprobar cierre</h6>
+    <p class="text-muted small mb-3">Al marcar como revisado quedará registrado tu nombre, la fecha y hora de la revisión.</p>
+    <form method="post" action="{% url 'revisar_cierre_caja' caja.pk %}">
+      {% csrf_token %}
+      <textarea name="notas_revision" class="form-control form-control-sm rounded-3 mb-3"
+                rows="2" placeholder="Observaciones (opcional): todo en orden, se solicitará aclaración, etc."></textarea>
+      <button type="submit" class="btn fw-700 rounded-pill px-4" style="background:#22c55e;color:#fff">
+        ✅ Marcar como revisado
+      </button>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- Acciones -->
+  <div class="d-flex gap-2 flex-wrap justify-content-center">
+    {% if es_admin %}
+    <a href="{% url 'dashboard_admin_pos' %}" class="btn rounded-pill fw-700 px-4" style="background:#0d0d1e;color:#fff">← Dashboard admin</a>
+    <a href="{% url 'historial_cierres' %}" class="btn btn-outline-dark rounded-pill">📋 Historial de cierres</a>
+    {% else %}
+    <a href="{% url 'dashboard_sucursal' %}" class="btn rounded-pill fw-700 px-4" style="background:#0d0d1e;color:#fff">← Mi sucursal</a>
+    {% endif %}
+    <a href="{% url 'pos' %}" class="btn btn-outline-secondary rounded-pill">🖥️ Ir al POS</a>
+  </div>
+
+</div>
+</div>
+</div>
+</section>
+{% endblock %}

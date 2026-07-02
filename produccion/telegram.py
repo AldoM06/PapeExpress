@@ -267,3 +267,39 @@ def notificar_pago_confirmado(pedido):
         f"El inventario se ha actualizado automáticamente."
     )
     enviar_async(msg)
+
+
+def notificar_traspaso(traspaso, evento):
+    """
+    evento: 'solicitado' | 'aprobado' | 'recibido' | 'cancelado'
+    """
+    iconos = {
+        'solicitado': '📦',
+        'aprobado':   '✅',
+        'recibido':   '🏁',
+        'cancelado':  '❌',
+    }
+    titulos = {
+        'solicitado': 'Nuevo traspaso solicitado',
+        'aprobado':   'Traspaso aprobado — en camino',
+        'recibido':   'Traspaso recibido en destino',
+        'cancelado':  'Traspaso cancelado',
+    }
+    icono  = iconos.get(evento, '📦')
+    titulo = titulos.get(evento, evento.capitalize())
+
+    lineas = [
+        f"  • {d.cantidad} × {d.producto.nombre}"
+        for d in traspaso.detalles.select_related('producto').all()
+    ]
+    productos_txt = "\n".join(lineas) or "  (sin detalle)"
+
+    msg = (
+        f"{icono} <b>PaPeExpress — {titulo}</b>\n\n"
+        f"🔖 Folio: <b>{traspaso.folio}</b>\n"
+        f"🏪 Origen: <b>{traspaso.sucursal_origen.nombre}</b>\n"
+        f"🏪 Destino: <b>{traspaso.sucursal_destino.nombre}</b>\n\n"
+        f"<b>Productos:</b>\n{productos_txt}\n\n"
+        f"📝 Notas: {traspaso.notas or 'Sin notas'}"
+    )
+    enviar_async(msg)

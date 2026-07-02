@@ -45,6 +45,12 @@
            style="background:#c8a84b;color:#fff">
           <i class="bi bi-plus-lg me-1"></i>Nuevo producto
         </a>
+        <a href="/pos/productos/margenes/" class="btn rounded-pill btn-sm fw-700"
+           style="background:#0ea5e9;color:#fff">📊 Márgenes</a>
+        <a href="/pos/productos/comparar/" class="btn rounded-pill btn-sm fw-700"
+           style="background:#f59e0b;color:#fff">🔍 Comparar precios</a>
+        <a href="/pos/traspasos/" class="btn rounded-pill btn-sm fw-700"
+           style="background:#8b5cf6;color:#fff">🚚 Traspasos</a>
         <a href="/pos/admin-pos/barrido/" class="btn rounded-pill btn-sm fw-700"
            style="background:#FFD600;color:#0d0d1e">📡 Barrido Telegram</a>
       </div>
@@ -56,32 +62,99 @@
   <div class="container-fluid px-4">
 
     <!-- Totales globales -->
-    <div class="row g-3 mb-4">
-      <div class="col-md-3">
+    <div class="row g-3 mb-3">
+      <div class="col-md-3 col-6">
         <div class="stat-card" style="background:linear-gradient(135deg,#FF0080,#FF1744)">
           <div class="text-white opacity-75 small fw-700">Ventas del mes</div>
-          <div class="text-white fw-900 mt-1" style="font-size:1.8rem">${{ total_mes|floatformat:2 }}</div>
+          <div class="text-white fw-900 mt-1" style="font-size:1.6rem">${{ total_mes|floatformat:2 }}</div>
           <div class="text-white opacity-60 small">Todas las sucursales</div>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-3 col-6">
         <div class="stat-card" style="background:linear-gradient(135deg,#00A846,#00C853)">
-          <div class="text-white opacity-75 small fw-700">Ganancia neta</div>
-          <div class="text-white fw-900 mt-1" style="font-size:1.8rem">${{ ganancia_mes|floatformat:2 }}</div>
-          <div class="text-white opacity-60 small">Después de costos</div>
+          <div class="text-white opacity-75 small fw-700">Ganancia bruta</div>
+          <div class="text-white fw-900 mt-1" style="font-size:1.6rem">${{ ganancia_mes|floatformat:2 }}</div>
+          <div class="text-white opacity-60 small">Ventas − costo de producto</div>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-3 col-6">
+        <div class="stat-card" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">
+          <div class="text-white opacity-75 small fw-700">Gastos fijos del mes</div>
+          <div class="text-white fw-900 mt-1" style="font-size:1.6rem">${{ total_gastos_gl|floatformat:2 }}</div>
+          <div class="text-white opacity-60 small">Renta, sueldos, servicios…</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        {% if utilidad_real >= 0 %}
+        <div class="stat-card" style="background:linear-gradient(135deg,#0ea5e9,#0284c7)">
+          <div class="text-white opacity-75 small fw-700">Utilidad real</div>
+          <div class="text-white fw-900 mt-1" style="font-size:1.6rem">${{ utilidad_real|floatformat:2 }}</div>
+          <div class="text-white opacity-60 small">{{ pct_utilidad_gl }}% sobre ventas</div>
+        </div>
+        {% else %}
+        <div class="stat-card" style="background:linear-gradient(135deg,#dc2626,#991b1b)">
+          <div class="text-white opacity-75 small fw-700">Utilidad real</div>
+          <div class="text-white fw-900 mt-1" style="font-size:1.6rem">${{ utilidad_real|floatformat:2 }}</div>
+          <div class="text-white opacity-60 small">⚠️ {{ pct_utilidad_gl }}% — gastos superan ganancia</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Barra de flujo de dinero -->
+    <div class="card border-0 rounded-4 p-3 mb-4" style="background:#fff">
+      <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+        <span class="fw-700 small">💰 Flujo del mes — todas las sucursales</span>
+        <div class="d-flex gap-3 flex-wrap" style="font-size:.75rem">
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#FF0080;margin-right:4px"></span>Costo producto</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#7c3aed;margin-right:4px"></span>Gastos fijos</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#FFD600;margin-right:4px"></span>Reinversión ({{ pct_reinversion }}%)</span>
+          <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#00C853;margin-right:4px"></span>Utilidad libre</span>
+        </div>
+      </div>
+      <div style="height:28px;border-radius:14px;overflow:hidden;display:flex;background:#f0f0f0">
+        <div id="bCosto"  style="height:100%;background:#FF0080;width:0;transition:width .8s"></div>
+        <div id="bGastos" style="height:100%;background:#7c3aed;width:0;transition:width .8s .1s"></div>
+        <div id="bReinv"  style="height:100%;background:#FFD600;width:0;transition:width .8s .2s"></div>
+        <div id="bLibre"  style="height:100%;background:#00C853;width:0;transition:width .8s .3s"></div>
+      </div>
+      <div class="d-flex justify-content-between mt-2 flex-wrap gap-1" style="font-size:.72rem;color:#666">
+        <span>Ventas totales: <strong>${{ total_mes|floatformat:0 }}</strong></span>
+        <span>Gastos fijos: <strong style="color:#7c3aed">${{ total_gastos_gl|floatformat:0 }}</strong></span>
+        <span>Reinversión sugerida: <strong style="color:#b45309">${{ reinversion|floatformat:0 }}</strong></span>
+        <span>Utilidad libre: <strong style="color:#00A846">${{ utilidad_real|floatformat:0 }}</strong> ({{ pct_utilidad_gl }}%)</span>
+      </div>
+      <script>
+      (function(){
+        var tot   = {{ total_mes|default:0 }};
+        var costo = tot - {{ ganancia_mes|default:0 }};
+        var gasto = {{ total_gastos_gl|default:0 }};
+        var reinv = {{ reinversion|default:0 }};
+        var libre = Math.max(0, {{ utilidad_real|default:0 }} - reinv);
+        if(tot <= 0) return;
+        function pct(v){ return Math.max(0, Math.min(100, v/tot*100)).toFixed(1)+'%'; }
+        requestAnimationFrame(function(){
+          document.getElementById('bCosto').style.width  = pct(costo);
+          document.getElementById('bGastos').style.width = pct(gasto);
+          document.getElementById('bReinv').style.width  = pct(reinv);
+          document.getElementById('bLibre').style.width  = pct(libre);
+        });
+      })();
+      </script>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-md-6 col-6">
         <div class="stat-card" style="background:linear-gradient(135deg,#FFD600,#FF8C00)">
           <div class="text-dark opacity-75 small fw-700">Reinversión sugerida</div>
-          <div class="text-dark fw-900 mt-1" style="font-size:1.8rem">${{ reinversion|floatformat:2 }}</div>
-          <div class="text-dark opacity-60 small">40% de ganancia → mercancía</div>
+          <div class="text-dark fw-900 mt-1" style="font-size:1.6rem">${{ reinversion|floatformat:2 }}</div>
+          <div class="text-dark opacity-60 small">{{ pct_reinversion }}% de utilidad real → mercancía</div>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-6 col-6">
         <div class="stat-card" style="background:linear-gradient(135deg,#0d0d1e,#1a1a3e)">
           <div class="text-white opacity-75 small fw-700">Productos críticos</div>
-          <div class="fw-900 mt-1" style="font-size:1.8rem;color:#FF1744">{{ criticos|length }}</div>
+          <div class="fw-900 mt-1" style="font-size:1.6rem;color:#FF1744">{{ criticos|length }}</div>
           <div class="text-white opacity-60 small">Bajo stock mínimo</div>
         </div>
       </div>
@@ -102,36 +175,59 @@
               </div>
               <div class="text-end">
                 <div class="fw-900" style="color:#FF0080;font-size:1.05rem">${{ rep.total_ventas|floatformat:2 }}</div>
-                <small class="text-muted">Ganancia: <span class="fw-700 text-success">${{ rep.ganancia_neta|floatformat:2 }}</span></small>
+                <small class="text-muted">G. bruta: <span class="fw-700 text-success">${{ rep.ganancia_neta|floatformat:2 }}</span></small>
               </div>
             </div>
-            <div class="row g-2 text-center" style="font-size:.75rem">
+            <!-- Métricas principales -->
+            <div class="row g-2 text-center mb-2" style="font-size:.75rem">
               <div class="col-3">
-                <div class="text-muted">Costo</div>
+                <div class="text-muted">Costo producto</div>
                 <div class="fw-700">${{ rep.total_costos|floatformat:2 }}</div>
               </div>
               <div class="col-3">
-                <div class="text-muted">Descuentos</div>
-                <div class="fw-700 text-warning">${{ rep.total_descuentos|floatformat:2 }}</div>
+                <div class="text-muted">Gastos fijos</div>
+                <div class="fw-700 text-purple" style="color:#7c3aed">${{ rep.total_gastos|floatformat:2 }}</div>
               </div>
               <div class="col-3">
-                <div class="text-muted">Margen</div>
-                <div class="fw-700 text-success">{{ rep.margen_pct }}%</div>
+                <div class="text-muted">Utilidad real</div>
+                <div class="fw-700 {% if rep.utilidad_real >= 0 %}text-primary{% else %}text-danger{% endif %}">
+                  ${{ rep.utilidad_real|floatformat:2 }}
+                </div>
               </div>
               <div class="col-3">
-                <div class="text-muted">Reinversión</div>
-                <div class="fw-700" style="color:#FF8C00">${{ rep.reinversion_sugerida|floatformat:2 }}</div>
+                <div class="text-muted">Margen real</div>
+                <div class="fw-700 {% if rep.margen_real_pct >= 0 %}text-success{% else %}text-danger{% endif %}">
+                  {{ rep.margen_real_pct }}%
+                </div>
               </div>
             </div>
-            <div class="ganancia-bar mt-2">
-              <div class="ganancia-fill" style="width:{{ rep.margen_pct }}%"></div>
+            <!-- Desglose gastos fijos -->
+            {% if rep.gastos_fijos %}
+            <details style="font-size:.72rem;color:#666;margin-bottom:.4rem">
+              <summary style="cursor:pointer;color:#7c3aed;font-weight:600">Ver gastos fijos ({{ rep.gastos_fijos|length }})</summary>
+              <div class="mt-1 ps-2">
+                {% for g in rep.gastos_fijos %}
+                <div class="d-flex justify-content-between">
+                  <span>{{ g.get_tipo_display }}{% if g.descripcion %} — {{ g.descripcion }}{% endif %}</span>
+                  <span class="fw-700">${{ g.monto|floatformat:2 }}</span>
+                </div>
+                {% endfor %}
+              </div>
+            </details>
+            {% else %}
+            <div style="font-size:.72rem;color:#aaa;margin-bottom:.3rem">⚠️ Sin gastos fijos registrados —
+              <a href="/admin/pos/gastofijo/add/" style="color:#7c3aed">agregar</a>
+            </div>
+            {% endif %}
+            <div class="ganancia-bar mt-1">
+              <div class="ganancia-fill" style="width:{% if rep.margen_real_pct > 0 %}{{ rep.margen_real_pct }}{% else %}0{% endif %}%"></div>
             </div>
           </div>
           {% empty %}
           <p class="text-muted text-center py-3">Sin datos de ventas en este período.</p>
           {% endfor %}
 
-          <div class="d-flex gap-2 mt-3">
+          <div class="d-flex gap-2 mt-3 flex-wrap">
             <a href="/pos/inventario/" class="btn btn-outline-dark rounded-pill btn-sm">
               📦 Ver inventario
             </a>
@@ -140,6 +236,9 @@
             </a>
             <a href="/pos/precios/comparar/" class="btn btn-outline-dark rounded-pill btn-sm">
               📈 Comparar precios
+            </a>
+            <a href="/pos/canceladas/" class="btn btn-outline-danger rounded-pill btn-sm">
+              🚫 Ventas canceladas
             </a>
           </div>
         </div>
@@ -209,6 +308,247 @@
         </div>
       </div>
     </div>
+
+    <!-- Top productos más vendidos -->
+    <div class="row g-4 mt-1">
+      <div class="col-lg-6">
+        <div class="card border-0 rounded-4 p-4">
+          <h6 class="fw-700 mb-3">🏆 Top productos del mes</h6>
+          {% if top_mes %}
+          <div class="table-responsive">
+            <table class="table table-sm align-middle" style="font-size:.82rem">
+              <thead class="table-light">
+                <tr><th>#</th><th>Producto</th><th class="text-end">Uds vendidas</th><th class="text-end">Importe</th></tr>
+              </thead>
+              <tbody>
+                {% for p in top_mes %}
+                <tr>
+                  <td>
+                    <span style="width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:900;font-size:.72rem;
+                      background:{% if forloop.counter == 1 %}#FFD700;color:#7a5c00{% elif forloop.counter == 2 %}#C0C0C0;color:#555{% elif forloop.counter == 3 %}#CD7F32;color:#fff{% else %}#f0f0f0;color:#888{% endif %}">
+                      {{ forloop.counter }}
+                    </span>
+                  </td>
+                  <td class="fw-600">{{ p.producto__nombre }}</td>
+                  <td class="text-end fw-700 text-danger">{{ p.total_uds|floatformat:0 }}</td>
+                  <td class="text-end text-success fw-600">${{ p.total_pesos|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="text-center py-4 text-muted small">
+            <i class="bi bi-bar-chart" style="font-size:2rem"></i>
+            <p class="mt-2">Sin ventas registradas este mes.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="card border-0 rounded-4 p-4">
+          <h6 class="fw-700 mb-3">📅 Top productos de la semana</h6>
+          {% if top_semana %}
+          <div class="table-responsive">
+            <table class="table table-sm align-middle" style="font-size:.82rem">
+              <thead class="table-light">
+                <tr><th>#</th><th>Producto</th><th class="text-end">Uds vendidas</th><th class="text-end">Importe</th></tr>
+              </thead>
+              <tbody>
+                {% for p in top_semana %}
+                <tr>
+                  <td>
+                    <span style="width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:900;font-size:.72rem;
+                      background:{% if forloop.counter == 1 %}#FFD700;color:#7a5c00{% elif forloop.counter == 2 %}#C0C0C0;color:#555{% elif forloop.counter == 3 %}#CD7F32;color:#fff{% else %}#f0f0f0;color:#888{% endif %}">
+                      {{ forloop.counter }}
+                    </span>
+                  </td>
+                  <td class="fw-600">{{ p.producto__nombre }}</td>
+                  <td class="text-end fw-700 text-danger">{{ p.total_uds|floatformat:0 }}</td>
+                  <td class="text-end text-success fw-600">${{ p.total_pesos|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="text-center py-4 text-muted small">
+            <i class="bi bi-bar-chart" style="font-size:2rem"></i>
+            <p class="mt-2">Sin ventas registradas esta semana.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
   </div>
+
+  <!-- ── TOP POR SUCURSAL ───────────────────────────── -->
+  <h5 class="fw-800 mt-4 mb-3">🛒 Productos más vendidos por sucursal — para anticipar compras</h5>
+
+  {% for ts in top_por_sucursal %}
+  <div class="card border-0 rounded-4 mb-4" style="overflow:hidden">
+    <div class="d-flex align-items-center px-4 py-3" style="background:#0d0d1e;color:#fff">
+      <span style="font-size:1.1rem;font-weight:900">🏪 {{ ts.sucursal.nombre }}</span>
+      <span class="ms-auto small opacity-60">Hoy · Esta semana</span>
+    </div>
+    <div class="row g-0">
+
+      <!-- Hoy -->
+      <div class="col-md-6 border-end">
+        <div class="px-4 pt-3 pb-1">
+          <div class="fw-700 small mb-2" style="color:#FF0080">📅 Hoy</div>
+          {% if ts.dia %}
+          <table class="table table-sm mb-0" style="font-size:.8rem">
+            <thead class="table-light">
+              <tr><th>#</th><th>Producto</th><th class="text-end">Uds</th><th class="text-end">$</th></tr>
+            </thead>
+            <tbody>
+              {% for p in ts.dia %}
+              <tr>
+                <td style="width:28px">
+                  <span style="width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:900;font-size:.65rem;
+                    background:{% if forloop.counter == 1 %}#FFD700;color:#7a5c00{% elif forloop.counter == 2 %}#C0C0C0;color:#555{% elif forloop.counter == 3 %}#CD7F32;color:#fff{% else %}#f0f0f0;color:#888{% endif %}">
+                    {{ forloop.counter }}
+                  </span>
+                </td>
+                <td class="fw-600">{{ p.producto__nombre }}</td>
+                <td class="text-end fw-700 text-danger">{{ p.uds }}</td>
+                <td class="text-end text-muted">${{ p.pesos|floatformat:0 }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <div class="text-muted small py-3 text-center">Sin ventas hoy</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Esta semana + stock -->
+      <div class="col-md-6">
+        <div class="px-4 pt-3 pb-1">
+          <div class="fw-700 small mb-2" style="color:#7c3aed">📆 Esta semana</div>
+          {% if ts.semana %}
+          <table class="table table-sm mb-0" style="font-size:.8rem">
+            <thead class="table-light">
+              <tr><th>#</th><th>Producto</th><th class="text-end">Vendido</th><th class="text-end">Stock</th></tr>
+            </thead>
+            <tbody>
+              {% for p in ts.semana %}
+              <tr {% if p.alerta %}style="background:#fff5f5"{% endif %}>
+                <td style="width:28px">
+                  <span style="width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:900;font-size:.65rem;
+                    background:{% if forloop.counter == 1 %}#FFD700;color:#7a5c00{% elif forloop.counter == 2 %}#C0C0C0;color:#555{% elif forloop.counter == 3 %}#CD7F32;color:#fff{% else %}#f0f0f0;color:#888{% endif %}">
+                    {{ forloop.counter }}
+                  </span>
+                </td>
+                <td class="fw-600">
+                  {{ p.nombre }}
+                  {% if p.alerta %}<span class="ms-1" style="color:#dc2626;font-size:.65rem">⚠️ bajo</span>{% endif %}
+                </td>
+                <td class="text-end fw-700 text-danger">{{ p.uds }}</td>
+                <td class="text-end fw-700 {% if p.alerta %}text-danger{% else %}text-success{% endif %}">{{ p.stock }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <div class="small text-muted mt-2 pb-2">
+            ⚠️ = vendió más esta semana que el stock actual disponible
+          </div>
+          {% else %}
+          <div class="text-muted small py-3 text-center">Sin ventas esta semana</div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+  {% endfor %}
+
+</div>
+
+<!-- ── CIERRES DE CAJA HOY ───────────────────────────────── -->
+<section style="padding:0 0 3rem;background:#f4f6f9;">
+<div class="container-fluid px-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-900 mb-0">🔒 Cierres de caja — hoy</h5>
+    <a href="{% url 'historial_cierres' %}" class="btn btn-sm btn-outline-dark rounded-pill">Ver historial completo</a>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- Sucursales con caja abierta o cerrada -->
+    {% for c in cierres_hoy %}
+    <div class="col-md-4">
+      <div class="stat-card" style="background:#fff;border-left:4px solid {% if c.estado == 'cerrada' %}{% if c.diferencia < 0 %}#ef4444{% elif c.diferencia > 0 %}#f59e0b{% else %}#22c55e{% endif %}{% else %}#3b82f6{% endif %}">
+
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <div class="fw-700" style="font-size:.95rem">{{ c.sucursal.nombre }}</div>
+            <div class="text-muted" style="font-size:.72rem">
+              Apertura: {{ c.apertura_en|date:"H:i" }} · {{ c.usuario_apertura.get_full_name|default:c.usuario_apertura.username }}
+            </div>
+          </div>
+          {% if c.estado == 'cerrada' %}
+            <span style="background:#dcfce7;color:#166534;border-radius:50px;padding:.15rem .6rem;font-size:.7rem;font-weight:700">🔒 Cerrada</span>
+          {% else %}
+            <span style="background:#dbeafe;color:#1e40af;border-radius:50px;padding:.15rem .6rem;font-size:.7rem;font-weight:700">🏪 Abierta</span>
+          {% endif %}
+        </div>
+
+        <div class="d-flex justify-content-between" style="font-size:.82rem">
+          <span class="text-muted">Cambio inicial</span>
+          <span class="fw-700">${{ c.cambio_inicial|floatformat:2 }}</span>
+        </div>
+
+        {% if c.estado == 'cerrada' %}
+        <div class="d-flex justify-content-between mt-1" style="font-size:.82rem">
+          <span class="text-muted">Esperado</span>
+          <span class="fw-700">${{ c.efectivo_esperado|floatformat:2 }}</span>
+        </div>
+        <div class="d-flex justify-content-between mt-1" style="font-size:.82rem">
+          <span class="text-muted">Contado</span>
+          <span class="fw-700">${{ c.efectivo_contado|floatformat:2 }}</span>
+        </div>
+        <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
+          <span class="fw-700" style="font-size:.88rem">
+            {% if c.diferencia > 0 %}
+              <span style="color:#f59e0b">⚠️ Sobran ${{ c.diferencia|floatformat:2 }}</span>
+            {% elif c.diferencia < 0 %}
+              <span style="color:#ef4444">❌ Faltan ${{ c.diferencia|floatformat:2|slice:"1:" }}</span>
+            {% else %}
+              <span style="color:#22c55e">✓ Cuadra exacto</span>
+            {% endif %}
+          </span>
+          <a href="{% url 'resumen_cierre_caja' c.pk %}" class="btn btn-sm btn-outline-dark rounded-pill" style="font-size:.68rem">Ver detalle</a>
+        </div>
+        {% else %}
+        <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
+          <span class="text-muted" style="font-size:.75rem">Sin cerrar aún</span>
+          <a href="{% url 'historial_cierres' %}?sucursal={{ c.sucursal.pk }}" class="btn btn-sm btn-outline-secondary rounded-pill" style="font-size:.68rem">Historial</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- Sucursales sin apertura hoy -->
+    {% for suc in sucursales_sin_caja %}
+    <div class="col-md-4">
+      <div class="stat-card" style="background:#fff;border-left:4px solid #e2e8f0;opacity:.8">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div class="fw-700" style="font-size:.95rem">{{ suc.nombre }}</div>
+          <span style="background:#f1f5f9;color:#94a3b8;border-radius:50px;padding:.15rem .6rem;font-size:.7rem;font-weight:700">Sin apertura</span>
+        </div>
+        <p class="text-muted small mb-0">No se ha registrado apertura de caja hoy.</p>
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
+
+</div>
 </section>
 {% endblock %}

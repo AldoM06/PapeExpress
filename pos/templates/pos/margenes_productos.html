@@ -1,0 +1,259 @@
+{% extends 'base.html' %}
+{% block title %}Márgenes de productos{% endblock %}
+
+{% block extra_css %}
+<style>
+.pos-hero { background:linear-gradient(135deg,#0d0d1e,#1e0d12); padding:7rem 0 2.5rem; color:#fff; }
+.sec-card  { background:#fff; border-radius:20px; box-shadow:0 4px 20px rgba(0,0,0,.07); }
+.precio-input {
+  width:80px; border:1px solid #e0e0e0; border-radius:8px;
+  padding:.25rem .4rem; font-size:.82rem; font-weight:700;
+  text-align:right; transition:.2s;
+}
+.precio-input:focus { border-color:#FF0080; outline:none; box-shadow:0 0 0 3px rgba(255,0,128,.12); }
+.precio-input.guardado { border-color:#00C853; background:#f0fff4; }
+.precio-input.error    { border-color:#dc2626; background:#fff5f5; }
+.margen-badge {
+  display:inline-block; border-radius:50px; padding:.1rem .45rem;
+  font-size:.68rem; font-weight:700; white-space:nowrap;
+}
+.margen-alto   { background:#d1fae5; color:#065f46; }
+.margen-medio  { background:#fef9c3; color:#713f12; }
+.margen-bajo   { background:#fee2e2; color:#991b1b; }
+.margen-nd     { background:#f0f0f0; color:#999; }
+.stock-badge { font-size:.72rem; color:#aaa; }
+.stock-critico { color:#dc2626; font-weight:700; }
+th { position:sticky; top:0; background:#f1f5f9; color:#1e293b; z-index:2; border-bottom:2px solid #e2e8f0; }
+.tabla-wrap { max-height:70vh; overflow-y:auto; border-radius:0 0 20px 20px; }
+.cat-sep td { background:#f8f9fa; font-weight:700; font-size:.75rem; color:#888; padding:.3rem 1rem; letter-spacing:.05em; text-transform:uppercase; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-hero">
+  <div class="container-fluid px-4">
+    <span class="section-label">POS Admin</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;">
+      📊 Márgenes de productos
+    </h1>
+    <p style="color:rgba(255,255,255,.6)">Edita precios y visualiza márgenes de menudeo y mayoreo</p>
+  </div>
+</div>
+
+<section style="padding:2rem 0;background:#f4f6f9;min-height:60vh;">
+<div class="container-fluid px-4">
+
+  <!-- Selector de sucursal -->
+  <div class="sec-card p-3 mb-4 d-flex align-items-center gap-3 flex-wrap">
+    <span class="fw-700">Sucursal:</span>
+    {% for s in sucursales %}
+    <a href="?sucursal={{ s.id }}"
+       class="btn btn-sm rounded-pill {% if sucursal and sucursal.id == s.id %}btn-dark{% else %}btn-outline-dark{% endif %}">
+      {{ s.nombre }}
+    </a>
+    {% endfor %}
+    <span class="ms-auto text-muted small">
+      Haz clic en un precio para editarlo · <kbd>Tab</kbd> para avanzar · <kbd>Enter</kbd> para guardar
+    </span>
+  </div>
+
+  <!-- Leyenda márgenes -->
+  <div class="d-flex gap-2 mb-3 flex-wrap align-items-center" style="font-size:.75rem">
+    <span class="fw-700 text-muted">Margen:</span>
+    <span class="margen-badge margen-alto">≥ 35% — bueno</span>
+    <span class="margen-badge margen-medio">15–34% — aceptable</span>
+    <span class="margen-badge margen-bajo">< 15% — revisar</span>
+    <span class="margen-badge margen-nd">Sin datos</span>
+    <span class="ms-auto text-muted">💡 Margen = (Precio − Costo) ÷ Precio × 100</span>
+  </div>
+
+  <!-- Tabla -->
+  <div class="sec-card">
+    <div class="tabla-wrap">
+      <table class="table table-hover mb-0" style="font-size:.82rem">
+        <thead>
+          <tr>
+            <th style="min-width:200px">Producto</th>
+            <th class="text-end">Costo</th>
+            <th class="text-end">Stock</th>
+            <th class="text-center" colspan="2" style="background:#dcfce7;color:#166534">🛍️ Menudeo (P1)</th>
+            <th class="text-center" colspan="2" style="background:#dbeafe;color:#1e3a8a">📦 Mayoreo (P2)</th>
+            <th class="text-center" colspan="2" style="background:#fef9c3;color:#713f12">⭐ Especial (P3)</th>
+            <th class="text-center" style="background:#fce7f3;color:#9d174d">🏷️ Oferta</th>
+            <th class="text-center" style="background:#ede9fe;color:#5b21b6">🚚 Traspaso (P4)</th>
+          </tr>
+          <tr>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th class="text-center" style="background:#dcfce7;color:#166534;font-size:.68rem">Precio</th>
+            <th class="text-center" style="background:#dcfce7;color:#166534;font-size:.68rem">Margen</th>
+            <th class="text-center" style="background:#dbeafe;color:#1e3a8a;font-size:.68rem">Precio</th>
+            <th class="text-center" style="background:#dbeafe;color:#1e3a8a;font-size:.68rem">Margen</th>
+            <th class="text-center" style="background:#fef9c3;color:#713f12;font-size:.68rem">Precio</th>
+            <th class="text-center" style="background:#fef9c3;color:#713f12;font-size:.68rem">Margen</th>
+            <th class="text-center" style="background:#fce7f3;color:#9d174d;font-size:.68rem">Precio oferta</th>
+            <th class="text-center" style="background:#ede9fe;color:#5b21b6;font-size:.68rem">Precio traspaso</th>
+          </tr>
+        </thead>
+        <tbody id="tablaMargen">
+          {% for f in filas %}
+          {% ifchanged f.producto.categoria %}
+          <tr class="cat-sep">
+            <td colspan="11">
+              {{ f.producto.categoria.icono|default:"📦" }}
+              {{ f.producto.categoria.nombre|default:"Sin categoría" }}
+            </td>
+          </tr>
+          {% endifchanged %}
+          <tr data-ppid="{{ f.pp_id|default:'' }}" data-costo="{{ f.costo }}">
+            <td>
+              <div class="fw-700">{{ f.producto.nombre }}</div>
+              <div class="text-muted" style="font-size:.68rem">{{ f.producto.codigo }}</div>
+            </td>
+            <td class="text-end fw-700">${{ f.costo|floatformat:2 }}</td>
+            <td class="text-end {% if f.stock <= 0 %}stock-critico{% else %}stock-badge{% endif %}">
+              {{ f.stock|floatformat:0 }}
+            </td>
+
+            <!-- P1 menudeo -->
+            <td class="text-center">
+              {% if f.pp_id %}
+              <input type="number" class="precio-input" data-campo="precio_1"
+                     value="{{ f.precio_1|floatformat:2 }}" step="0.01" min="0">
+              {% else %}<span class="text-muted small">sin precio</span>{% endif %}
+            </td>
+            <td class="text-center">
+              {% if f.margen_1 is not None %}
+              <span class="margen-badge js-margen {% if f.margen_1 >= 35 %}margen-alto{% elif f.margen_1 >= 15 %}margen-medio{% else %}margen-bajo{% endif %}" data-campo="margen_1">{{ f.margen_1 }}%</span>
+              {% else %}<span class="margen-badge margen-nd js-margen" data-campo="margen_1">—</span>{% endif %}
+            </td>
+
+            <!-- P2 mayoreo -->
+            <td class="text-center">
+              {% if f.pp_id %}
+              <input type="number" class="precio-input" data-campo="precio_2"
+                     value="{% if f.precio_2 %}{{ f.precio_2|floatformat:2 }}{% endif %}" step="0.01" min="0" placeholder="—">
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td class="text-center">
+              {% if f.margen_2 is not None %}
+              <span class="margen-badge js-margen {% if f.margen_2 >= 35 %}margen-alto{% elif f.margen_2 >= 15 %}margen-medio{% else %}margen-bajo{% endif %}" data-campo="margen_2">{{ f.margen_2 }}%</span>
+              {% else %}<span class="margen-badge margen-nd js-margen" data-campo="margen_2">—</span>{% endif %}
+            </td>
+
+            <!-- P3 especial -->
+            <td class="text-center">
+              {% if f.pp_id %}
+              <input type="number" class="precio-input" data-campo="precio_3"
+                     value="{% if f.precio_3 %}{{ f.precio_3|floatformat:2 }}{% endif %}" step="0.01" min="0" placeholder="—">
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td class="text-center">
+              {% if f.margen_3 is not None %}
+              <span class="margen-badge js-margen {% if f.margen_3 >= 35 %}margen-alto{% elif f.margen_3 >= 15 %}margen-medio{% else %}margen-bajo{% endif %}" data-campo="margen_3">{{ f.margen_3 }}%</span>
+              {% else %}<span class="margen-badge margen-nd js-margen" data-campo="margen_3">—</span>{% endif %}
+            </td>
+
+            <!-- Oferta -->
+            <td class="text-center">
+              {% if f.pp_id %}
+              <input type="number" class="precio-input" data-campo="precio_oferta"
+                     value="{% if f.precio_oferta %}{{ f.precio_oferta|floatformat:2 }}{% endif %}"
+                     step="0.01" min="0" placeholder="—" style="width:72px">
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+
+            <!-- P4 Traspaso -->
+            <td class="text-center">
+              {% if f.pp_id %}
+              <input type="number" class="precio-input" data-campo="precio_traspaso"
+                     value="{% if f.precio_traspaso %}{{ f.precio_traspaso|floatformat:2 }}{% endif %}"
+                     step="0.01" min="0" placeholder="—" style="width:72px;border-color:#c4b5fd">
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="11" class="text-center py-4 text-muted">Sin productos activos.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="mt-3 d-flex gap-2">
+    <a href="{% url 'dashboard_admin_pos' %}" class="btn btn-outline-dark rounded-pill btn-sm">← Dashboard</a>
+    <a href="{% url 'pos_productos_lista' %}" class="btn btn-outline-dark rounded-pill btn-sm">Ver productos</a>
+    <a href="{% url 'pos_comparar_precios' %}" class="btn rounded-pill btn-sm fw-700" style="background:#f59e0b;color:#fff">🔍 Comparar precios</a>
+  </div>
+
+</div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+
+function claseMargen(m) {
+  if (m === null || m === undefined || isNaN(m)) return 'margen-nd';
+  if (m >= 35) return 'margen-alto';
+  if (m >= 15) return 'margen-medio';
+  return 'margen-bajo';
+}
+
+function calcMargen(precio, costo) {
+  precio = parseFloat(precio); costo = parseFloat(costo);
+  if (!precio || !costo || precio <= 0) return null;
+  return Math.round((precio - costo) / precio * 1000) / 10;
+}
+
+function actualizarBadgeMargen(input) {
+  const tr    = input.closest('tr');
+  const costo = parseFloat(tr.dataset.costo) || 0;
+  const campo = input.dataset.campo; // precio_1, precio_2, precio_3
+  const mCampo = 'margen_' + campo.split('_')[1];
+  const badge = tr.querySelector(`.js-margen[data-campo="${mCampo}"]`);
+  if (!badge) return;
+  const m = calcMargen(input.value, costo);
+  const txt = m !== null ? m + '%' : '—';
+  const cls = claseMargen(m);
+  badge.innerHTML = `<span class="margen-badge ${cls}">${txt}</span>`;
+}
+
+let saveTimer = null;
+
+function guardarPrecio(input) {
+  const tr   = input.closest('tr');
+  const ppId = tr.dataset.ppid;
+  if (!ppId) return;
+  const campo = input.dataset.campo;
+  const valor = input.value.trim();
+
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    fetch(`/pos/precios/${ppId}/actualizar/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({ [campo]: valor === '' ? null : parseFloat(valor) }),
+    })
+    .then(r => r.json())
+    .then(d => {
+      input.classList.remove('guardado', 'error');
+      input.classList.add(d.ok ? 'guardado' : 'error');
+      setTimeout(() => input.classList.remove('guardado', 'error'), 1800);
+    });
+  }, 600); // debounce 600ms
+}
+
+document.querySelectorAll('.precio-input').forEach(input => {
+  input.addEventListener('input', () => {
+    actualizarBadgeMargen(input);
+    guardarPrecio(input);
+  });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); guardarPrecio(input); input.blur(); }
+  });
+});
+</script>
+{% endblock %}

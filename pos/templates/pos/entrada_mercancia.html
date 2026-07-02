@@ -75,9 +75,26 @@
           </div>
         </div>
 
+        <!-- Escáner de código de barras -->
+        <div class="mb-3">
+          <label class="form-label fw-600 small">
+            <i class="bi bi-upc-scan me-1 text-success"></i>Escáner de código de barras
+            <span class="badge bg-success ms-1" style="font-size:.65rem">Rápido</span>
+          </label>
+          <div class="input-group">
+            <span class="input-group-text" style="background:#d4edda;border-color:#c3e6cb">
+              <i class="bi bi-upc-scan text-success"></i>
+            </span>
+            <input type="text" id="scannerInput" class="form-control"
+                   placeholder="Escanea el código de barras aquí…" autocomplete="off"
+                   style="border-color:#c3e6cb;font-family:monospace;font-size:.95rem">
+          </div>
+          <small class="text-muted">El producto se agrega automáticamente al escanear (Enter). También puedes escribir el código.</small>
+        </div>
+
         <!-- Buscador para agregar producto al ticket -->
         <div class="mb-3">
-          <label class="form-label fw-600 small">Agregar producto al ticket</label>
+          <label class="form-label fw-600 small">Buscar producto por nombre</label>
           <div class="prod-search-wrap">
             <div class="input-group">
               <input type="text" id="prodBuscar" class="form-control rounded-start-3"
@@ -194,6 +211,33 @@ const btnGuardar = document.getElementById('btnGuardar');
 const totalEl    = document.getElementById('totalTicket');
 
 let items = [];
+
+// ── Escáner de código de barras ──────────────────────────
+const scannerInput = document.getElementById('scannerInput');
+scannerInput.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const codigo = scannerInput.value.trim();
+  if (!codigo) return;
+  const exacto = productos.find(p => p.codigo.toLowerCase() === codigo.toLowerCase());
+  if (exacto) {
+    agregarProducto(exacto);
+    scannerInput.value = '';
+    scannerInput.focus();
+    // Flash visual de éxito
+    scannerInput.style.borderColor = '#28a745';
+    scannerInput.style.background  = '#d4edda';
+    setTimeout(() => { scannerInput.style.borderColor = '#c3e6cb'; scannerInput.style.background = ''; }, 600);
+  } else {
+    scannerInput.style.borderColor = '#dc3545';
+    scannerInput.style.background  = '#f8d7da';
+    setTimeout(() => { scannerInput.style.borderColor = '#c3e6cb'; scannerInput.style.background = ''; }, 800);
+  }
+});
+// Al cargar la página, dar foco al escáner si hay sucursal seleccionada
+{% if sucursal %}
+window.addEventListener('load', () => scannerInput.focus());
+{% endif %}
 
 buscar.addEventListener('input', () => {
   const q = buscar.value.toLowerCase().trim();

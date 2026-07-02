@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% block title %}Traspasos entre sucursales{% endblock %}
+
+{% block extra_css %}
+<style>
+.pos-hero { background:linear-gradient(135deg,#0d0d1e,#1e0d12); padding:7rem 0 2.5rem; color:#fff; }
+.sec-card  { background:#fff; border-radius:20px; box-shadow:0 4px 20px rgba(0,0,0,.07); }
+.badge-estado { border-radius:50px; padding:.2rem .7rem; font-size:.72rem; font-weight:700; }
+.estado-solicitado { background:#fef9c3; color:#713f12; }
+.estado-aprobado   { background:#dbeafe; color:#1e40af; }
+.estado-recibido   { background:#dcfce7; color:#166534; }
+.estado-cancelado  { background:#f3f4f6; color:#6b7280; }
+.tabla-wrap { max-height:72vh; overflow-y:auto; border-radius:0 0 20px 20px; }
+th { position:sticky; top:0; background:#f1f5f9; color:#1e293b; z-index:2; border-bottom:2px solid #e2e8f0; font-size:.78rem; }
+.det-row td { background:#f8fafc; font-size:.76rem; color:#64748b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-hero">
+  <div class="container-fluid px-4">
+    <span class="section-label">POS Admin</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;">
+      🚚 Traspasos entre sucursales
+    </h1>
+    <p style="color:rgba(255,255,255,.6)">Control de movimiento de mercancía entre sucursales</p>
+  </div>
+</div>
+
+<section style="padding:2rem 0;background:#f4f6f9;min-height:60vh;">
+<div class="container-fluid px-4">
+
+  <!-- Barra superior -->
+  <div class="sec-card p-3 mb-4 d-flex align-items-center gap-3 flex-wrap">
+    <a href="{% url 'traspaso_nuevo' %}" class="btn btn-sm rounded-pill fw-700"
+       style="background:#FF0080;color:#fff">+ Nuevo traspaso</a>
+    <span class="text-muted">|</span>
+    <a href="?estado=" class="btn btn-sm rounded-pill {% if not estado_sel %}btn-dark{% else %}btn-outline-dark{% endif %}">Todos</a>
+    <a href="?estado=solicitado" class="btn btn-sm rounded-pill {% if estado_sel == 'solicitado' %}btn-warning text-dark{% else %}btn-outline-warning{% endif %}">Solicitados</a>
+    <a href="?estado=aprobado"   class="btn btn-sm rounded-pill {% if estado_sel == 'aprobado' %}btn-primary{% else %}btn-outline-primary{% endif %}">En camino</a>
+    <a href="?estado=recibido"   class="btn btn-sm rounded-pill {% if estado_sel == 'recibido' %}btn-success{% else %}btn-outline-success{% endif %}">Recibidos</a>
+  </div>
+
+  <!-- Tabla -->
+  <div class="sec-card">
+    <div class="tabla-wrap">
+      <table class="table table-hover mb-0" style="font-size:.83rem">
+        <thead>
+          <tr>
+            <th>Folio</th>
+            <th>Origen</th>
+            <th>Destino</th>
+            <th>Productos</th>
+            <th>Estado</th>
+            <th>Solicitado por</th>
+            <th>Fecha</th>
+            <th class="text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in traspasos %}
+          <tr style="cursor:pointer" onclick="this.nextElementSibling.classList.toggle('d-none')">
+            <td><span class="fw-700">{{ t.folio }}</span></td>
+            <td>{{ t.sucursal_origen.nombre }}</td>
+            <td>{{ t.sucursal_destino.nombre }}</td>
+            <td>
+              {% for d in t.detalles.all %}
+              <div style="font-size:.75rem">{{ d.cantidad|floatformat:0 }} × {{ d.producto.nombre }}</div>
+              {% endfor %}
+            </td>
+            <td>
+              <span class="badge-estado estado-{{ t.estado }}">{{ t.get_estado_display }}</span>
+            </td>
+            <td style="font-size:.75rem">{{ t.solicitado_por.get_full_name|default:t.solicitado_por.username }}</td>
+            <td style="font-size:.75rem">{{ t.creado|date:"d/m/y H:i" }}</td>
+            <td class="text-center" onclick="event.stopPropagation()">
+              {% if t.estado == 'solicitado' %}
+                <a href="{% url 'traspaso_aprobar' t.pk %}" class="btn btn-sm btn-primary rounded-pill" style="font-size:.7rem">✅ Aprobar</a>
+              {% elif t.estado == 'aprobado' %}
+                <a href="{% url 'traspaso_recibir' t.pk %}" class="btn btn-sm btn-success rounded-pill" style="font-size:.7rem">🏁 Recibir</a>
+              {% endif %}
+              {% if t.estado in 'solicitado,aprobado' %}
+                {% if user.is_superuser or user.rol == 'admin' %}
+                <a href="{% url 'traspaso_cancelar' t.pk %}" class="btn btn-sm btn-outline-danger rounded-pill" style="font-size:.7rem">✗</a>
+                {% endif %}
+              {% endif %}
+            </td>
+          </tr>
+          <!-- Fila expandible con notas y timeline -->
+          <tr class="det-row d-none">
+            <td colspan="8" class="px-4 py-2">
+              <div class="d-flex gap-4 flex-wrap">
+                {% if t.notas %}<div><strong>Notas:</strong> {{ t.notas }}</div>{% endif %}
+                <div class="d-flex gap-3">
+                  <span>📤 Solicitado: {{ t.creado|date:"d/m/y H:i" }}</span>
+                  {% if t.aprobado_en %}<span>✅ Aprobado: {{ t.aprobado_en|date:"d/m/y H:i" }} ({{ t.aprobado_por.get_full_name|default:t.aprobado_por.username }})</span>{% endif %}
+                  {% if t.recibido_en %}<span>🏁 Recibido: {{ t.recibido_en|date:"d/m/y H:i" }} ({{ t.recibido_por.get_full_name|default:t.recibido_por.username }})</span>{% endif %}
+                </div>
+                {% if t.estado == 'recibido' %}
+                <table class="table table-sm mb-0" style="font-size:.75rem;max-width:400px">
+                  <tr><th>Producto</th><th>Solicitado</th><th>Recibido</th></tr>
+                  {% for d in t.detalles.all %}
+                  <tr>
+                    <td>{{ d.producto.nombre }}</td>
+                    <td>{{ d.cantidad|floatformat:0 }}</td>
+                    <td {% if d.cantidad_recibida != d.cantidad %}class="text-danger fw-700"{% endif %}>{{ d.cantidad_recibida|floatformat:0 }}</td>
+                  </tr>
+                  {% endfor %}
+                </table>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" class="text-center py-5 text-muted">No hay traspasos registrados.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="mt-3 d-flex gap-2">
+    <a href="{% url 'dashboard_admin_pos' %}" class="btn btn-outline-dark rounded-pill btn-sm">← Dashboard</a>
+    <a href="{% url 'dashboard_sucursal' %}" class="btn btn-outline-dark rounded-pill btn-sm">Mi sucursal</a>
+  </div>
+
+</div>
+</section>
+{% endblock %}

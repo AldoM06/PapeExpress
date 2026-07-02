@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+{% block title %}Comparar precios entre sucursales{% endblock %}
+
+{% block extra_css %}
+<style>
+.pos-hero { background:linear-gradient(135deg,#0d0d1e,#1e0d12); padding:7rem 0 2.5rem; color:#fff; }
+.sec-card  { background:#fff; border-radius:20px; box-shadow:0 4px 20px rgba(0,0,0,.07); }
+th { position:sticky; top:0; background:#f1f5f9; color:#1e293b; z-index:2; border-bottom:2px solid #e2e8f0; font-size:.78rem; }
+.tabla-wrap { max-height:75vh; overflow-y:auto; border-radius:0 0 20px 20px; }
+.cat-sep td { background:#f8f9fa; font-weight:700; font-size:.72rem; color:#888; padding:.3rem 1rem; letter-spacing:.05em; text-transform:uppercase; }
+
+/* celdas de precio */
+.celda-ok   { background:#f0fdf4; }
+.celda-diff { background:#fef2f2; }
+
+/* badges de precio */
+.p-badge {
+  display:inline-flex; align-items:center; gap:.3rem;
+  border-radius:8px; padding:.18rem .5rem;
+  font-size:.82rem; font-weight:700;
+}
+.p-badge-ok   { background:#dcfce7; color:#166534; }
+.p-badge-diff { background:#fee2e2; color:#991b1b; }
+.p-badge-nd   { background:#f0f0f0; color:#aaa; font-weight:400; font-size:.75rem; }
+
+/* botón igualar */
+.btn-igualar {
+  font-size:.7rem; padding:.15rem .45rem; border-radius:6px;
+  border:1px solid #d1d5db; background:#fff; color:#374151;
+  cursor:pointer; white-space:nowrap; transition:.15s;
+}
+.btn-igualar:hover { background:#f9fafb; border-color:#9ca3af; }
+.btn-igualar.ok    { background:#dcfce7; border-color:#86efac; color:#166534; }
+.btn-igualar.err   { background:#fee2e2; border-color:#fca5a5; color:#991b1b; }
+
+.row-diff td:first-child { border-left:3px solid #ef4444; }
+.badge-diff-label { font-size:.65rem; background:#fef2f2; color:#b91c1c; border:1px solid #fca5a5; border-radius:4px; padding:.05rem .3rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-hero">
+  <div class="container-fluid px-4">
+    <span class="section-label">POS Admin</span>
+    <h1 style="font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:900;">
+      🔍 Comparar precios entre sucursales
+    </h1>
+    <p style="color:rgba(255,255,255,.6)">Detecta diferencias en P1 (menudeo) y P2 (mayoreo) y nivélalas en un clic</p>
+  </div>
+</div>
+
+<section style="padding:2rem 0;background:#f4f6f9;min-height:60vh;">
+<div class="container-fluid px-4">
+
+  <!-- Barra de filtros -->
+  <div class="sec-card p-3 mb-4 d-flex align-items-center gap-3 flex-wrap">
+    <span class="fw-700">Filtro:</span>
+    <a href="?solo_diff=0" class="btn btn-sm rounded-pill {% if not solo_diff %}btn-dark{% else %}btn-outline-dark{% endif %}">
+      Todos los productos
+    </a>
+    <a href="?solo_diff=1" class="btn btn-sm rounded-pill {% if solo_diff %}btn-danger{% else %}btn-outline-danger{% endif %}">
+      ⚠️ Solo con diferencias
+    </a>
+    <span class="ms-auto text-muted small">
+      {{ filas|length }} producto{{ filas|length|pluralize:"s" }}
+      {% if solo_diff %} con diferencias{% endif %}
+    </span>
+  </div>
+
+  <!-- Leyenda -->
+  <div class="d-flex gap-3 mb-3 flex-wrap align-items-center" style="font-size:.75rem">
+    <span class="p-badge p-badge-ok">$0.00 — precios iguales</span>
+    <span class="p-badge p-badge-diff">$0.00 — precio diferente</span>
+    <span class="p-badge p-badge-nd">Sin precio</span>
+    <span class="ms-auto text-muted">Haz clic en ▶ para igualar esa sucursal como referencia</span>
+  </div>
+
+  <!-- Tabla -->
+  <div class="sec-card">
+    <div class="tabla-wrap">
+      <table class="table table-hover mb-0" style="font-size:.82rem">
+        <thead>
+          <tr>
+            <th style="min-width:200px">Producto</th>
+            {% for suc in sucursales %}
+            <th class="text-center" style="background:#dbeafe;color:#1e3a8a" colspan="2">{{ suc.nombre }}</th>
+            {% endfor %}
+            <th class="text-center" style="background:#fef9c3;color:#713f12;min-width:130px">Igualar a todas</th>
+          </tr>
+          <tr>
+            <th></th>
+            {% for suc in sucursales %}
+            <th class="text-center" style="background:#eff6ff;color:#1e40af;font-size:.68rem">P1 menudeo</th>
+            <th class="text-center" style="background:#eff6ff;color:#1e40af;font-size:.68rem">P2 mayoreo</th>
+            {% endfor %}
+            <th class="text-center" style="background:#fefce8;color:#92400e;font-size:.68rem">Desde sucursal ▼</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in filas %}
+          {% ifchanged f.producto.categoria %}
+          <tr class="cat-sep">
+            <td colspan="{{ sucursales|length|add:sucursales|length|add:2 }}">
+              {{ f.producto.categoria.icono|default:"📦" }} {{ f.producto.categoria.nombre|default:"Sin categoría" }}
+            </td>
+          </tr>
+          {% endifchanged %}
+
+          <tr class="{% if f.tiene_diff %}row-diff{% endif %}" data-prod-id="{{ f.producto.id }}">
+            <td>
+              <div class="fw-700">{{ f.producto.nombre }}</div>
+              <div class="text-muted" style="font-size:.65rem">{{ f.producto.codigo }}</div>
+              {% if f.diff_p1 %}<span class="badge-diff-label">P1 ≠</span>{% endif %}
+              {% if f.diff_p2 %}<span class="badge-diff-label">P2 ≠</span>{% endif %}
+            </td>
+
+            {% for ps in f.sucursales %}
+            <td class="text-center {% if f.diff_p1 and ps.p1 is not None %}celda-diff{% elif ps.p1 is not None %}celda-ok{% endif %}" style="padding:.4rem .5rem">
+              {% if ps.p1 is not None %}
+              <span class="p-badge {% if f.diff_p1 %}p-badge-diff{% else %}p-badge-ok{% endif %}">
+                ${{ ps.p1|floatformat:2 }}
+              </span>
+              {% else %}
+              <span class="p-badge p-badge-nd">—</span>
+              {% endif %}
+            </td>
+            <td class="text-center {% if f.diff_p2 and ps.p2 is not None %}celda-diff{% elif ps.p2 is not None %}celda-ok{% endif %}" style="padding:.4rem .5rem">
+              {% if ps.p2 is not None %}
+              <span class="p-badge {% if f.diff_p2 %}p-badge-diff{% else %}p-badge-ok{% endif %}">
+                ${{ ps.p2|floatformat:2 }}
+              </span>
+              {% else %}
+              <span class="p-badge p-badge-nd">—</span>
+              {% endif %}
+            </td>
+            {% endfor %}
+
+            <!-- Celda de igualado -->
+            <td class="text-center" style="padding:.35rem .5rem">
+              {% if f.tiene_diff %}
+              <select class="btn-igualar suc-select" style="padding:.15rem .3rem;font-size:.7rem;border-radius:6px;border:1px solid #d1d5db">
+                <option value="">Elegir...</option>
+                {% for ps in f.sucursales %}
+                {% if ps.pp_id %}
+                <option value="{{ ps.sucursal.id }}" data-p1="{{ ps.p1|default:'' }}" data-p2="{{ ps.p2|default:'' }}">
+                  {{ ps.sucursal.nombre }}{% if ps.p1 %} (${{ ps.p1|floatformat:2 }}){% endif %}
+                </option>
+                {% endif %}
+                {% endfor %}
+              </select>
+              <div class="d-flex gap-1 justify-content-center mt-1">
+                <button class="btn-igualar btn-ig-p1" title="Igualar solo P1 (menudeo)">P1 ▶</button>
+                <button class="btn-igualar btn-ig-p2" title="Igualar solo P2 (mayoreo)">P2 ▶</button>
+                <button class="btn-igualar btn-ig-ambos" title="Igualar P1 y P2">P1+P2 ▶</button>
+              </div>
+              {% else %}
+              <span class="text-success" style="font-size:.75rem">✓ iguales</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="20" class="text-center py-5 text-muted">No hay productos con diferencias de precio.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="mt-3 d-flex gap-2">
+    <a href="{% url 'dashboard_admin_pos' %}" class="btn btn-outline-dark rounded-pill btn-sm">← Dashboard</a>
+    <a href="{% url 'pos_margenes' %}" class="btn btn-outline-dark rounded-pill btn-sm">📊 Márgenes</a>
+  </div>
+
+</div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+
+document.querySelectorAll('tr[data-prod-id]').forEach(tr => {
+  const prodId = tr.dataset.prodId;
+  const select = tr.querySelector('.suc-select');
+  if (!select) return;
+
+  function igualar(campo) {
+    const sucId = select.value;
+    if (!sucId) { alert('Elige una sucursal de referencia primero.'); return; }
+    const btn = tr.querySelector(`.btn-ig-${campo === 'precio_1' ? 'p1' : campo === 'precio_2' ? 'p2' : 'ambos'}`);
+
+    fetch(`/pos/productos/${prodId}/igualar/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify({ campo, suc_id: sucId }),
+    })
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        btn.classList.add('ok');
+        btn.textContent = '✓';
+        // resaltar fila como igualada
+        setTimeout(() => {
+          tr.classList.remove('row-diff');
+          tr.querySelectorAll('.celda-diff').forEach(c => c.classList.replace('celda-diff','celda-ok'));
+          tr.querySelectorAll('.p-badge-diff').forEach(b => b.classList.replace('p-badge-diff','p-badge-ok'));
+          tr.querySelector('td:first-child').style.borderLeft = '3px solid #22c55e';
+        }, 400);
+      } else {
+        btn.classList.add('err');
+        btn.textContent = '✗';
+        console.error(d.error);
+      }
+      setTimeout(() => { btn.classList.remove('ok','err'); btn.textContent = btn.title.split(' ')[0] + ' ▶'; }, 3000);
+    });
+  }
+
+  tr.querySelector('.btn-ig-p1')?.addEventListener('click', () => igualar('precio_1'));
+  tr.querySelector('.btn-ig-p2')?.addEventListener('click', () => igualar('precio_2'));
+  tr.querySelector('.btn-ig-ambos')?.addEventListener('click', () => igualar('ambos'));
+});
+</script>
+{% endblock %}

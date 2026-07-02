@@ -4,13 +4,14 @@ from django.db import models
 
 class Usuario(AbstractUser):
     ROL_CHOICES = [
-        ('admin', 'Administrador'),
-        ('cliente', 'Cliente'),
-        ('socio', 'Socio Comercial'),
-        ('ventas', 'Ventas'),
-        ('almacen', 'Almacén'),
-        ('diseño', 'Diseño'),
-        ('produccion', 'Producción'),
+        ('admin',     'Administrador'),
+        ('operador',  'Operador PapeExpress'),  # ve pedidos + POS según sucursal
+        ('cliente',   'Cliente'),
+        ('socio',     'Socio Comercial'),
+        ('ventas',    'Ventas'),
+        ('almacen',   'Almacén'),
+        ('diseño',    'Diseño'),
+        ('produccion','Producción'),
     ]
     rol = models.CharField(max_length=20, choices=ROL_CHOICES, default='cliente')
     empresa = models.CharField(max_length=200, blank=True)

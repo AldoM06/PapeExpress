@@ -13,6 +13,7 @@ from django.utils import timezone
 from .models import (
     Venta, DetalleVenta, Inventario, MovimientoInventario,
     CompraProveedor, DetalleCompra, PrecioHistoricoProveedor,
+    ConfigPOS,
 )
 from .tasks import alerta_stock_minimo
 
@@ -300,7 +301,8 @@ def reporte_ganancias_sucursal(sucursal, fecha_inicio, fecha_fin):
     total_descuentos = totals['total_descuentos'] or Decimal('0')
     ganancia_neta   = total_ventas - total_costos - total_descuentos
     margen          = (ganancia_neta / total_ventas * 100) if total_ventas > 0 else Decimal('0')
-    reinversion     = ganancia_neta * Decimal('0.40')  # 40% sugerido para reinversión
+    config          = ConfigPOS.get()
+    reinversion     = ganancia_neta * (config.pct_reinversion / Decimal('100'))
 
     return {
         'sucursal':       sucursal.nombre,
